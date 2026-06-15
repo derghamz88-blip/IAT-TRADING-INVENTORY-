@@ -637,16 +637,24 @@
 
             allDocuments = [];
             for (let i = 1; i < lines.length; i++) {
-                const values = parseCSVLine(lines[i]);
-                if (values[0]) {
+                let values = parseCSVLine(lines[i]);
+
+                // Handle case where Timestamp contains a comma (e.g. "6:01:36 PM, 2026/06/15")
+                // which shifts all subsequent columns by one.
+                // Expected total columns = 7. If we have 8, merge first two into timestamp.
+                if (values.length === 8) {
+                    values = [values[0] + ' ' + values[1], ...values.slice(2)];
+                }
+
+                if (values[1]) { // Employee Name must exist
                     allDocuments.push({
                         timestamp: values[0] || '',
                         employeeName: values[1] || '',
                         documentName: values[2] || '',
                         documentType: values[3] || '',
                         date: values[4] || '',
-                        notes: values[5] || '',
-                        attachment: values[6] || '',
+                        attachment: values[5] || '',
+                        notes: values[6] || '',
                         status: 'pending',
                         response: ''
                     });
