@@ -25,12 +25,12 @@ window.$signOut=()=>signOut(_auth);
 window.$createUser=(e,p)=>createUserWithEmailAndPassword(_auth,e,p);
 window.$resetPass=(e)=>sendPasswordResetEmail(_auth,e);
 // ADMIN email - change this to your email
-window.ADMIN_EMAIL="Derghamz88@gmail.com";
+window.ADMIN_EMAIL="derghamz88@gmail.com";
 onAuthStateChanged(_auth,user=>{
   window.$user=user||null;
   if(user){
     document.getElementById('fb-login-screen')?.remove();
-    window.$isAdmin=(user.email===window.ADMIN_EMAIL);
+    window.$isAdmin=(user.email?.toLowerCase()===window.ADMIN_EMAIL?.toLowerCase());
     window.$isView=!window.$isAdmin;
     window._fbBoot();
   } else {
