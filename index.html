@@ -4402,12 +4402,18 @@ async function _loadAdminData(adminId){
   const db=window.$db;
   const mainSnap=await window.$getDoc(window.$doc(db,'users',adminId,'data','main'));
   if(mainSnap.exists()){
+    // Firebase has data - load it
     const d=mainSnap.data();
     if(d.D)D={inventories:[],receivables:[],returns:[],sales:[],daySales:[],stockSummaries:[],waste:[],production:[],...d.D};
     if(d.FA)FA=d.FA;if(d.FB)FB=d.FB;
     if(d.PRODUCTS&&d.PRODUCTS.length)PRODUCTS=d.PRODUCTS;
     if(d.MD)MD=d.MD;if(d.SMD)SMD=d.SMD;
     recompute();
+  } else if(window.$isAdmin){
+    // Firebase empty - upload local data to Firebase now
+    showToast('☁️ Uploading local data to Firebase...');
+    await _fbSaveNow();
+    showToast('✅ Local data uploaded to Firebase!');
   }
   const settSnap=await window.$getDoc(window.$doc(db,'users',adminId,'data','settings'));
   if(settSnap.exists()){
@@ -4415,6 +4421,11 @@ async function _loadAdminData(adminId){
     if(s.NWC_TYPES&&s.NWC_TYPES.length)NWC_TYPES=s.NWC_TYPES;
     if(s.RP_DATA)RP_DATA=s.RP_DATA;
     if(s.SH_DATA)SH_DATA=s.SH_DATA;
+  } else if(window.$isAdmin){
+    // Upload settings too
+    await window.$setDoc(window.$doc(db,'users',adminId,'data','settings'),{
+      NWC_TYPES,RP_DATA,SH_DATA,updatedAt:Date.now()
+    });
   }
 }
 window._loadAdminData=_loadAdminData;
