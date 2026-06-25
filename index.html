@@ -4375,7 +4375,7 @@ async function _fbBoot(){
       b.textContent='👁 VIEW ONLY — Changes are not saved';
       document.body.prepend(b);
     }
-    showToast(window.$isAdmin?'✅ Admin mode':'👁 View-only mode');
+    showToast(window.$isAdmin?'✅ Admin: '+window.$user.email:'👁 View only: '+window.$user.email);
   }catch(ex){
     console.error(ex);showToast('⚠️ Load error');
   }
@@ -4438,7 +4438,7 @@ function _scheduleSave(){
   _saveTimer=setTimeout(_fbSaveNow,1500);
 }
 async function _fbSaveNow(){
-  if(!window.$isAdmin||!window.$user)return;
+  if(!window.$isAdmin||!window.$user){console.warn('Save blocked: isAdmin=',window.$isAdmin,'user=',window.$user?.email);return;}
   const uid=window.$user.uid;
   try{
     await window.$setDoc(window.$doc(window.$db,'users',uid,'data','main'),{
@@ -4447,7 +4447,11 @@ async function _fbSaveNow(){
     await window.$setDoc(window.$doc(window.$db,'users',uid,'data','settings'),{
       NWC_TYPES,RP_DATA,SH_DATA,updatedAt:Date.now()
     });
-  }catch(e){console.error('Save error:',e);}
+    showToast('☁️ Saved to Firebase');
+  }catch(e){
+    console.error('Save error:',e);
+    showToast('❌ Firebase save error: '+e.code);
+  }
 }
 window._fbSaveNow=_fbSaveNow;
 
