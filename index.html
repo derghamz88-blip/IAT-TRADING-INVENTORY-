@@ -26,12 +26,18 @@ window.$createUser=(e,p)=>createUserWithEmailAndPassword(_auth,e,p);
 window.$resetPass=(e)=>sendPasswordResetEmail(_auth,e);
 // ADMIN email - change this to your email
 window.ADMIN_EMAIL="derghamz88@gmail.com";
+// ADMIN_UID: set this after first admin login (check browser console)
+window.ADMIN_UID="w3S1gCXjVFaoqJnQn5sAH3ii99r2";
 onAuthStateChanged(_auth,user=>{
   window.$user=user||null;
   if(user){
     document.getElementById('fb-login-screen')?.remove();
     window.$isAdmin=(user.email?.toLowerCase()===window.ADMIN_EMAIL?.toLowerCase());
     window.$isView=!window.$isAdmin;
+    if(window.$isAdmin){
+      console.log('✅ ADMIN UID:', user.uid);
+      window.ADMIN_UID=user.uid;
+    }
     window._fbBoot();
   } else {
     window.$user=null;window.$isAdmin=false;window.$isView=false;
@@ -4362,12 +4368,17 @@ window._doLogin=_doLogin;
 async function _fbBoot(){
   showToast('☁️ Loading...');
   try{
-    // Always load from admin's data
-    const adminId=await _getAdminId();
-    if(!adminId){showToast('⚠️ No admin data found');render();return;}
+    let adminId;
+    if(window.$isAdmin){
+      adminId=window.$user.uid;
+      window.ADMIN_UID=adminId;
+    } else {
+      // View user: use hardcoded admin UID
+      adminId=window.ADMIN_UID;
+      if(!adminId){showToast('⚠️ Admin UID not configured');render();return;}
+    }
     window.$adminId=adminId;
     await _loadAdminData(adminId);
-    // Show view-only badge if not admin
     if(window.$isView){
       document.querySelector('.fb-view-badge')?.remove();
       const b=document.createElement('div');
@@ -4375,28 +4386,15 @@ async function _fbBoot(){
       b.textContent='👁 VIEW ONLY — Changes are not saved';
       document.body.prepend(b);
     }
-    showToast(window.$isAdmin?'✅ Admin: '+window.$user.email:'👁 View only: '+window.$user.email);
+    showToast(window.$isAdmin?'✅ Admin: '+window.$user.email:'👁 View only');
   }catch(ex){
-    console.error(ex);showToast('⚠️ Load error');
+    console.error('Boot error:',ex);
+    showToast('⚠️ Error: '+ex.message);
   }
   render();
   setTimeout(checkDraft,400);
 }
 window._fbBoot=_fbBoot;
-
-// Get admin UID from Firestore (stored under a known doc)
-async function _getAdminId(){
-  // Admin stores their own UID in a public doc so view-users can find it
-  if(window.$isAdmin){
-    // Save admin's own UID so view users can find it
-    await window.$setDoc(window.$doc(window.$db,'config','admin'),{uid:window.$user.uid,email:window.$user.email});
-    return window.$user.uid;
-  } else {
-    // View user reads admin UID from config
-    const snap=await window.$getDoc(window.$doc(window.$db,'config','admin'));
-    return snap.exists()?snap.data().uid:null;
-  }
-}
 
 async function _loadAdminData(adminId){
   const db=window.$db;
@@ -4438,7 +4436,7 @@ function _scheduleSave(){
   _saveTimer=setTimeout(_fbSaveNow,1500);
 }
 async function _fbSaveNow(){
-  if(!window.$isAdmin||!window.$user){console.warn('Save blocked: isAdmin=',window.$isAdmin,'user=',window.$user?.email);return;}
+  if(!window.$isAdmin||!window.$user)return;
   const uid=window.$user.uid;
   try{
     await window.$setDoc(window.$doc(window.$db,'users',uid,'data','main'),{
@@ -4447,11 +4445,7 @@ async function _fbSaveNow(){
     await window.$setDoc(window.$doc(window.$db,'users',uid,'data','settings'),{
       NWC_TYPES,RP_DATA,SH_DATA,updatedAt:Date.now()
     });
-    showToast('☁️ Saved to Firebase');
-  }catch(e){
-    console.error('Save error:',e);
-    showToast('❌ Firebase save error: '+e.code);
-  }
+  }catch(e){console.error('Save error:',e);}
 }
 window._fbSaveNow=_fbSaveNow;
 
