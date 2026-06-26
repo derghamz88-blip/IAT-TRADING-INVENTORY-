@@ -425,7 +425,7 @@ function getTotalKg(items,p){
 
 
 // ═══ FORMULA HELPERS ════════════════════════════════
-const REC_TYPE_MAP={inventories:'inventory',receivables:'receivables',returns:'returns',sales:'sales',daySales:'daysales',stockSummaries:'stocksummary',waste:'waste'};
+const REC_TYPE_MAP={inventories:'inventory',receivables:'receivables',returns:'returns',sales:'sales',daySales:'daysales',stockSummaries:'stocksummary',waste:'waste',production:'production'};
 
 function findRecord(id){
   for(const[key,type] of Object.entries(REC_TYPE_MAP)){
@@ -2090,7 +2090,7 @@ function renderFormula(fid){
     <!-- Record picker -->
     <div style="font-size:11px;color:#546E7A;margin-bottom:6px;font-weight:600">Add Records:</div>
     <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">
-      ${[['all','All'],['inventories','📦'],['receivables','📥'],['returns','🔄'],['sales','📤'],['daySales','☀️'],['stockSummaries','📊'],['waste','♻️']].map(([k,l])=>
+      ${[['all','All'],['inventories','📦'],['receivables','📥'],['returns','🔄'],['sales','📤'],['daySales','☀️'],['stockSummaries','📊'],['waste','♻️'],['production','🏭']].map(([k,l])=>
         `<button class="btn" style="background:${ff===k?fcolor:'#ECEFF1'};color:${ff===k?'#fff':'#546E7A'};padding:3px 9px;font-size:11px" onclick="S.${fid==='a'?'faFilter':'fbFilter'}='${k}';render()">${l}</button>`
       ).join('')}
     </div>`;
