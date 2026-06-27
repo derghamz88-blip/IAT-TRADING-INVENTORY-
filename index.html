@@ -2199,13 +2199,14 @@ function renderDiff(){
     </div>
     <div style="border-radius:9px;border:1px solid #ECEFF1;overflow:hidden">
     <table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed">
-      <colgroup><col style="width:24px"><col><col style="width:75px"><col style="width:75px"><col style="width:85px"></colgroup>
+      <colgroup><col style="width:24px"><col><col style="width:70px"><col style="width:70px"><col style="width:75px"><col style="width:75px"></colgroup>
       <thead><tr style="background:#263238;color:#fff">
         <th style="padding:4px 5px;text-align:center">#</th>
         <th style="padding:4px 5px">Product</th>
         <th style="padding:3px 4px;text-align:center;background:#4527A0CC">A<br><small style="font-weight:400;font-size:9px">Qty</small></th>
         <th style="padding:3px 4px;text-align:center;background:#00695CCC">B<br><small style="font-weight:400;font-size:9px">Qty</small></th>
-        <th style="padding:3px 4px;text-align:center;background:#BF360C">B−A<br><small style="font-weight:400;font-size:9px">Diff</small></th>
+        <th style="padding:3px 4px;text-align:center;background:#BF360C">B−A<br><small style="font-weight:400;font-size:9px">Qty</small></th>
+        <th style="padding:3px 4px;text-align:center;background:#1565C0">B−A<br><small style="font-weight:400;font-size:9px">Comb KG</small></th>
       </tr></thead><tbody>`;
 
   // Show all products (kg and pcs separately)
@@ -2229,6 +2230,7 @@ function renderDiff(){
       <td style="padding:4px 5px;text-align:center;color:${qA!==0?'#4527A0':'#CFD8DC'}">${qA!==0?qA.toFixed(2)+' <small>'+unit+'</small>':'—'}</td>
       <td style="padding:4px 5px;text-align:center;color:${qB!==0?'#00695C':'#CFD8DC'}">${qB!==0?qB.toFixed(2)+' <small>'+unit+'</small>':'—'}</td>
       <td style="padding:4px 5px;text-align:center;font-weight:700;color:${dColor};background:${d>0?'#F1F8E9':d<0?'#FFF5F5':'#F5F5F5'}">${d!==0?(d>0?'+':'')+d.toFixed(2)+' <small>'+unit+'</small>':'—'}</td>
+      <td style="padding:4px 5px;text-align:center;font-weight:700;color:${(()=>{const ckA=getTotalKg(totA,p),ckB=getTotalKg(totB,p),cd=ckB-ckA;return cd>0?'#1565C0':cd<0?'#C62828':'#9E9E9E';})()};background:#EEF2FF">${(()=>{const ckA=getTotalKg(totA,p),ckB=getTotalKg(totB,p),cd=ckB-ckA;return cd!==0?(cd>0?'+':'')+cd.toFixed(2)+' kg':'—';})()}</td>
     </tr>`;
   });
   const dTotal=grandD;
@@ -2237,6 +2239,7 @@ function renderDiff(){
     <td style="text-align:center;background:#4527A0CC">${grandA.toFixed(2)}</td>
     <td style="text-align:center;background:#00695CCC">${grandB.toFixed(2)}</td>
     <td style="text-align:center;background:#BF360C">${dTotal>=0?'+':''}${dTotal.toFixed(2)}</td>
+    <td style="text-align:center;background:#1565C0">${grandD>=0?'+':''}${grandD.toFixed(2)} kg</td>
   </tr></tbody></table></div></div>`;
   return h;
 }
@@ -3149,7 +3152,7 @@ function compactProdItems(items){
   });
   return c;
 }
-function prodTotal(it){return(parseFloat(it?.ba)||0)+(parseFloat(it?.input)||0)-(parseFloat(it?.output)||0)-(parseFloat(it?.waste)||0);}
+function prodTotal(it){return(parseFloat(it?.ba)||0)+(parseFloat(it?.input)||0)+(parseFloat(it?.waste)||0)-(parseFloat(it?.output)||0);}
 
 function updProdVal(p,field,el){
   const v=normalizeNum(el.value);
@@ -3179,7 +3182,7 @@ function updateProductionTotals(){
   PRODUCTS.forEach(p=>{
     const it=PRO.items[p];if(!it)return;
     const ba=parseFloat(it.ba)||0,inp=parseFloat(it.input)||0,out=parseFloat(it.output)||0,wst=parseFloat(it.waste)||0;
-    const total=ba+inp-out-wst;
+    const total=ba+inp+wst-out;
     if(ba===0&&inp===0&&out===0&&wst===0)return;
     touched++;sumBA+=ba;sumIn+=inp;sumOut+=out;sumWst+=wst;sumTotal+=total;
     if(total<0)negCount++;
@@ -3203,7 +3206,7 @@ function renderProductionRows(srch){
     const it=PRO.items[p]||{ba:0,input:'',output:'',waste:''};
     const ba=parseFloat(it.ba)||0;
     const inp=it.input||'',out=it.output||'',wst=it.waste||'';
-    const total=ba+(parseFloat(inp)||0)-(parseFloat(out)||0)-(parseFloat(wst)||0);
+    const total=ba+(parseFloat(inp)||0)+(parseFloat(wst)||0)-(parseFloat(out)||0);
     const is500=p.endsWith(' 500')||p.endsWith(' FF');
     return`<tr style="background:${idx%2===0?'#fff':'#FAFAFA'};border-bottom:1px solid #EFEFEF">
       <td style="padding:3px 4px;color:#BDBDBD;font-size:9px;text-align:center">${idx+1}</td>
