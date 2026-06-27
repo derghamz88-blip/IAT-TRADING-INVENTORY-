@@ -504,25 +504,24 @@ function renderFormulaDetail(fid){
     ${activeProd.map((p,pi)=>{
       const is500=p.endsWith(' 500');
       const rowBg=pi%2===0?'#fff':'#FAFAFA';
+      const isPcs=!!C_MAP[p];
+      const unit=isPcs?'pcs':'kg';
       const totVal=cols.reduce((s,{f,sign})=>{
-        const kg=parseFloat(f.record.items?.[p]?.kg)||0;
-        const pcs=parseFloat(f.record.items?.[p]?.pcs)||0;
-        return s+sign*(kg+pcs*0.5);
+        const val=isPcs?(parseFloat(f.record.items?.[p]?.pcs)||0):(parseFloat(f.record.items?.[p]?.kg)||0);
+        return s+sign*val;
       },0);
       return`<tr>
         <td style="${stickyTd(p,rowBg)}">
-          ${is500?`<span style="color:#9C27B0;font-size:10px">↗ ${p}</span>`:`<span>${p}</span>`}
+          ${isPcs?`<span style="color:#9C27B0;font-size:10px">↗ ${p}</span>`:`<span>${p}</span>`}
         </td>
         ${cols.map(({f,sign})=>{
-          const kg=parseFloat(f.record.items?.[p]?.kg)||0;
-          const pcs=parseFloat(f.record.items?.[p]?.pcs)||0;
-          const val=kg+pcs*0.5;
+          const val=isPcs?(parseFloat(f.record.items?.[p]?.pcs)||0):(parseFloat(f.record.items?.[p]?.kg)||0);
           if(val===0)return`<td style="text-align:center;padding:5px 6px;color:#E0E0E0;border-bottom:1px solid #EFEFEF;border-right:1px solid #F0F0F0;background:${rowBg}">—</td>`;
-          const disp=sign>0?'+'+val.toFixed(val%1===0?0:2):'-'+val.toFixed(val%1===0?0:2);
+          const disp=(sign>0?'+':'-')+val.toFixed(val%1===0?0:2)+' '+unit;
           return`<td style="text-align:center;padding:5px 6px;font-weight:700;color:${sign>0?'#2E7D32':'#C62828'};background:${sign>0?'#F1F8E9':'#FFF3E0'};border-bottom:1px solid #EFEFEF;border-right:1px solid #F0F0F0">${disp}</td>`;
         }).join('')}
         <td style="text-align:center;padding:5px 7px;font-weight:800;font-size:12px;color:${totVal>0?'#1565C0':totVal<0?'#C62828':'#90A4AE'};background:${totVal>0?'#E3F2FD':totVal<0?'#FFEBEE':'#F5F5F5'};border-bottom:1px solid #EFEFEF">
-          ${totVal===0?'—':(totVal>0?'+':'')+totVal.toFixed(totVal%1===0?0:2)}
+          ${totVal===0?'—':(totVal>0?'+':'')+totVal.toFixed(totVal%1===0?0:2)+' '+unit}
         </td>
       </tr>`;
     }).join('')}
@@ -3127,9 +3126,18 @@ function getFormulaBA(fromDate,toDate){
   const totB=fbOps.length?calcFormula(fbOps):null;
   const ba={};
   PRODUCTS.forEach(p=>{
-    const bKg=totB?(totB[p]?.kg||0):0,bPcs=totB?(totB[p]?.pcs||0):0;
-    const aKg=totA?(totA[p]?.kg||0):0,aPcs=totA?(totA[p]?.pcs||0):0;
-    ba[p]=(bKg+bPcs*0.5)-(aKg+aPcs*0.5);
+    const isPcs=!!C_MAP[p]; // child = pcs product (500g)
+    if(isPcs){
+      // pcs products: use pcs directly (not converted to kg)
+      const bPcs=totB?(totB[p]?.pcs||0):0;
+      const aPcs=totA?(totA[p]?.pcs||0):0;
+      ba[p]=bPcs-aPcs;
+    } else {
+      // kg products: use kg directly
+      const bKg=totB?(totB[p]?.kg||0):0;
+      const aKg=totA?(totA[p]?.kg||0):0;
+      ba[p]=bKg-aKg;
+    }
   });
   return ba;
 }
