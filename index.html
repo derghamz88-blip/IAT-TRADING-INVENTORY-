@@ -3183,13 +3183,13 @@ function renderProductionRows(srch){
     const total=ba+(parseFloat(inp)||0)-(parseFloat(out)||0)-(parseFloat(wst)||0);
     const is500=p.endsWith(' 500')||p.endsWith(' FF');
     return`<tr style="background:${idx%2===0?'#fff':'#FAFAFA'};border-bottom:1px solid #EFEFEF">
-      <td style="padding:3px 4px;color:#BDBDBD;font-size:9px;text-align:center;position:sticky;left:0;background:${idx%2===0?'#fff':'#FAFAFA'};z-index:1">${idx+1}</td>
-      <td style="padding:4px 6px;font-size:11px;font-weight:600;color:${is500?'#9C27B0':'#37474F'};white-space:nowrap;position:sticky;left:22px;background:${idx%2===0?'#fff':'#FAFAFA'};z-index:1;border-right:2px solid #E0E0E0">${p}</td>
-      <td style="padding:4px 4px;text-align:center;font-weight:800;font-size:11px;white-space:nowrap;background:${ba>0?'#E8F5E9':ba<0?'#FFEBEE':'#F5F5F5'};color:${ba>0?'#2E7D32':ba<0?'#C62828':'#90A4AE'}">${ba===0?'—':(ba>0?'+':'')+ba.toFixed(ba%1===0?0:2)+(is500?' p':'')}</td>
-      <td style="padding:2px 3px"><input type="text" inputmode="decimal" value="${inp}" placeholder="0" ${(PRO.mode==='auto'||PRO.mode==='semi')?'readonly':''} style="width:50px;text-align:center;border:1.5px solid ${parseFloat(inp)?'#90CAF9':'#E0E0E0'};border-radius:6px;font-size:11px;padding:4px;background:${parseFloat(inp)?'#E3F2FD':'#fff'};font-family:inherit;${(PRO.mode==='auto'||PRO.mode==='semi')?'opacity:.5;':''}" oninput="updProdVal('${p.replace(/'/g,"\\'")}','input',this)"></td>
-      <td style="padding:2px 3px"><input type="text" inputmode="decimal" value="${out}" placeholder="0" ${(PRO.mode==='auto'||PRO.mode==='semi')?'readonly':''} style="width:50px;text-align:center;border:1.5px solid ${parseFloat(out)?'#90CAF9':'#E0E0E0'};border-radius:6px;font-size:11px;padding:4px;background:${parseFloat(out)?'#E3F2FD':'#fff'};font-family:inherit;${(PRO.mode==='auto'||PRO.mode==='semi')?'opacity:.5;':''}" oninput="updProdVal('${p.replace(/'/g,"\\'")}','output',this)"></td>
-      <td style="padding:2px 3px"><input type="text" inputmode="decimal" value="${wst}" placeholder="0" ${PRO.mode==='auto'?'readonly':''} style="width:50px;text-align:center;border:1.5px solid ${parseFloat(wst)?'#FFB74D':'#E0E0E0'};border-radius:6px;font-size:11px;padding:4px;background:${parseFloat(wst)?'#FFF3E0':'#fff'};font-family:inherit;${PRO.mode==='auto'?'opacity:.5;':''}" oninput="${PRO.mode==='semi'?'onWasteChangeSemi':'updProdVal'}('${p.replace(/'/g,"\\'")}',${PRO.mode==='semi'?'':'\'waste\','}this)"></td>
-      <td id="ptot-${idx}" style="padding:4px 5px;text-align:center;font-weight:800;font-size:11px;background:${total>0?'#E8F5E9':total<0?'#FFEBEE':'#F5F5F5'};color:${total>0?'#2E7D32':total<0?'#C62828':'#90A4AE'}">${total===0?'—':(total>0?'+':'')+total.toFixed(total%1===0?0:2)}</td>
+      <td style="padding:3px 2px;color:#BDBDBD;font-size:9px;text-align:center">${idx+1}</td>
+      <td style="padding:3px 4px;font-size:10px;font-weight:600;color:${is500?'#9C27B0':'#37474F'};word-break:break-word;line-height:1.3">${p}</td>
+      <td style="padding:3px 2px;text-align:center;font-weight:800;font-size:10px;background:${ba>0?'#E8F5E9':ba<0?'#FFEBEE':'#F5F5F5'};color:${ba>0?'#2E7D32':ba<0?'#C62828':'#90A4AE'}">${ba===0?'—':(ba>0?'+':'')+ba.toFixed(ba%1===0?0:2)+(is500?' p':'')}</td>
+      <td style="padding:1px 2px"><input type="text" inputmode="decimal" value="${inp}" placeholder="0" ${(PRO.mode==='auto'||PRO.mode==='semi')?'readonly':''} style="width:100%;text-align:center;border:1.5px solid ${parseFloat(inp)?'#90CAF9':'#E0E0E0'};border-radius:5px;font-size:10px;padding:3px;background:${parseFloat(inp)?'#E3F2FD':'#fff'};font-family:inherit;${(PRO.mode==='auto'||PRO.mode==='semi')?'opacity:.5;':''}" oninput="updProdVal('${p.replace(/'/g,"\\'")}','input',this)"></td>
+      <td style="padding:1px 2px"><input type="text" inputmode="decimal" value="${out}" placeholder="0" ${(PRO.mode==='auto'||PRO.mode==='semi')?'readonly':''} style="width:100%;text-align:center;border:1.5px solid ${parseFloat(out)?'#90CAF9':'#E0E0E0'};border-radius:5px;font-size:10px;padding:3px;background:${parseFloat(out)?'#E3F2FD':'#fff'};font-family:inherit;${(PRO.mode==='auto'||PRO.mode==='semi')?'opacity:.5;':''}" oninput="updProdVal('${p.replace(/'/g,"\\'")}','output',this)"></td>
+      <td style="padding:1px 2px"><input type="text" inputmode="decimal" value="${wst}" placeholder="0" ${PRO.mode==='auto'?'readonly':''} style="width:100%;text-align:center;border:1.5px solid ${parseFloat(wst)?'#FFB74D':'#E0E0E0'};border-radius:5px;font-size:10px;padding:3px;background:${parseFloat(wst)?'#FFF3E0':'#fff'};font-family:inherit;${PRO.mode==='auto'?'opacity:.5;':''}" oninput="${PRO.mode==='semi'?'onWasteChangeSemi':'updProdVal'}('${p.replace(/'/g,"\\'")}',${PRO.mode==='semi'?'':'\'waste\','}this)"></td>
+      <td id="ptot-${idx}" style="padding:3px 2px;text-align:center;font-weight:800;font-size:10px;background:${total>0?'#E8F5E9':total<0?'#FFEBEE':'#F5F5F5'};color:${total>0?'#2E7D32':total<0?'#C62828':'#90A4AE'}">${total===0?'—':(total>0?'+':'')+total.toFixed(total%1===0?0:2)}</td>
     </tr>`;
   }).join('');
 }
@@ -3291,19 +3291,27 @@ function renderProductionForm(){
   <div class="card">
     <input class="srch" id="prod-srch-inp" type="text" placeholder="🔍 Search..." value="${S.pSearch||''}" oninput="updProdSearch(this.value)" style="margin-bottom:8px;width:100%">
     <div style="overflow-x:auto">
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-    <table style="border-collapse:collapse;min-width:550px;width:100%">
+    <table style="border-collapse:collapse;width:100%;table-layout:fixed">
+      <colgroup>
+        <col style="width:20px">
+        <col style="width:72px">
+        <col style="width:52px">
+        <col style="width:48px">
+        <col style="width:48px">
+        <col style="width:48px">
+        <col style="width:52px">
+      </colgroup>
       <thead><tr style="background:${inf.color};color:#fff">
-        <th style="padding:4px 4px;font-size:10px;text-align:center;width:22px;position:sticky;left:0;background:${inf.color};z-index:2">#</th>
-        <th style="padding:4px 6px;font-size:10px;text-align:left;width:100px;position:sticky;left:22px;background:${inf.color};z-index:2;border-right:2px solid rgba(255,255,255,.3)">Product</th>
-        <th style="padding:4px 4px;font-size:10px;text-align:center;width:65px;background:#BF360C">B−A</th>
-        <th style="padding:4px 4px;font-size:10px;text-align:center;width:55px">Input</th>
-        <th style="padding:4px 4px;font-size:10px;text-align:center;width:55px">Output</th>
-        <th style="padding:4px 4px;font-size:10px;text-align:center;width:55px;background:#E65100">Waste</th>
-        <th style="padding:4px 4px;font-size:10px;text-align:center;width:65px;background:#1B5E20">Total</th>
+        <th style="padding:3px 2px;font-size:9px;text-align:center">#</th>
+        <th style="padding:3px 4px;font-size:9px;text-align:left">Product</th>
+        <th style="padding:3px 2px;font-size:9px;text-align:center;background:#BF360C">B−A</th>
+        <th style="padding:3px 2px;font-size:9px;text-align:center">Input</th>
+        <th style="padding:3px 2px;font-size:9px;text-align:center">Output</th>
+        <th style="padding:3px 2px;font-size:9px;text-align:center;background:#E65100">Waste</th>
+        <th style="padding:3px 2px;font-size:9px;text-align:center;background:#1B5E20">Total</th>
       </tr></thead>
       <tbody id="prod-tbody">${renderProductionRows(S.pSearch||'')}</tbody>
-    </table></div>
+    </table>
     </div>
   </div>`;
 }
@@ -4574,16 +4582,37 @@ function setProdMode(mode){
 }
 function onWasteChangeSemi(p,el){
   const v=normalizeNum(el.value);
-  if(v!==el.value){el.value=v;}
+  if(v!==el.value){
+    const pos=el.selectionStart;el.value=v;
+    try{el.setSelectionRange(pos,pos);}catch(e){}
+  }
   if(!PRO.items[p])PRO.items[p]={ba:0,input:'',output:'',waste:''};
   PRO.items[p].waste=v;
   if((PRO.mode||'manual')==='semi'){
     const ba=parseFloat(PRO.items[p].ba)||0;
     const wst=parseFloat(v)||0;
-    if(ba<0){PRO.items[p].input=Math.max(0,Math.abs(ba)-wst).toFixed(2);PRO.items[p].output='';}
-    else{PRO.items[p].input='';PRO.items[p].output=(ba+wst).toFixed(2);}
-    const tbody=document.getElementById('prod-tbody');
-    if(tbody)tbody.innerHTML=renderProductionRows(S.pSearch||'');
+    if(ba<0){
+      PRO.items[p].input=Math.max(0,Math.abs(ba)-wst).toFixed(2);
+      PRO.items[p].output='';
+    } else {
+      PRO.items[p].input='';
+      PRO.items[p].output=(ba+wst).toFixed(2);
+    }
+    // Update input/output fields directly without re-render (to keep focus)
+    const idx=PRODUCTS.indexOf(p);
+    const inpEl=el.closest('tr')?.querySelector('td:nth-child(5) input');
+    const outEl=el.closest('tr')?.querySelector('td:nth-child(6) input');
+    if(inpEl){inpEl.value=PRO.items[p].input;inpEl.style.borderColor=parseFloat(PRO.items[p].input)?'#90CAF9':'#E0E0E0';inpEl.style.background=parseFloat(PRO.items[p].input)?'#E3F2FD':'#fff';}
+    if(outEl){outEl.value=PRO.items[p].output;outEl.style.borderColor=parseFloat(PRO.items[p].output)?'#90CAF9':'#E0E0E0';outEl.style.background=parseFloat(PRO.items[p].output)?'#E3F2FD':'#fff';}
+    // Update total cell
+    const total=prodTotal(PRO.items[p]);
+    const totEl=document.getElementById('ptot-'+idx);
+    if(totEl){
+      const is500=!!C_MAP[p];
+      totEl.textContent=total===0?'—':(total>0?'+':'')+total.toFixed(total%1===0?0:2)+(is500?' p':'');
+      totEl.style.color=total>0?'#2E7D32':total<0?'#C62828':'#90A4AE';
+      totEl.style.background=total>0?'#E8F5E9':total<0?'#FFEBEE':'#F5F5F5';
+    }
   }
   updateProductionTotals();
   saveDraft();
