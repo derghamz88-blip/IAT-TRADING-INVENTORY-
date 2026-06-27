@@ -3113,7 +3113,7 @@ function processExcelDay(buf,name){
     const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
     const result=[],converted={},unmatched=[];PRODUCTS.forEach(p=>converted[p]=0);
     let start=1;for(let i=0;i<Math.min(rows.length,5);i++){if(rows[i].some(c=>String(c).toLowerCase().includes('name'))){start=i+1;break;}}
-    for(let i=start;i<rows.length;i++){const row=rows[i];const rn=String(row[1]||'').trim();const qty=parseFloat(row[2])||0;if(!rn||rn.toLowerCase()==='total')continue;const map=lookupMap(rn);const entry={name:rn,qty,matched:!!map,product:map?map.p:'',multiplier:map?map.m:0,converted:map?(qty*map.m):0};result.push(entry);if(map&&qty>0)converted[map.p]=(converted[map.p]||0)+(qty*map.m);else if(qty>0)unmatched.push({name:rn,qty});}
+    for(let i=start;i<rows.length;i++){const row=rows[i];const rn=String(row[1]||'').trim();const qty=parseFloat(row[3])||0;if(!rn||rn.toLowerCase()==='total')continue;const map=lookupMap(rn);const entry={name:rn,qty,matched:!!map,product:map?map.p:'',multiplier:map?map.m:0,converted:map?(qty*map.m):0};result.push(entry);if(map&&qty>0)converted[map.p]=(converted[map.p]||0)+(qty*map.m);else if(qty>0)unmatched.push({name:rn,qty});}
     UPD={step:'result',fileName:name,date:new Date().toISOString().split('T')[0],rows:result,converted,unmatched};
   }catch(e){alert('Error: '+e.message);UPD.step='upload';}render();
 }
