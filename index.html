@@ -3188,7 +3188,7 @@ function renderProductionRows(srch){
       <td style="padding:3px 2px;text-align:center;font-weight:800;font-size:10px;background:${ba>0?'#E8F5E9':ba<0?'#FFEBEE':'#F5F5F5'};color:${ba>0?'#2E7D32':ba<0?'#C62828':'#90A4AE'}">${ba===0?'—':(ba>0?'+':'')+ba.toFixed(ba%1===0?0:2)+(is500?' p':'')}</td>
       <td style="padding:1px 2px"><input type="text" inputmode="decimal" value="${inp}" placeholder="0" ${(PRO.mode==='auto'||PRO.mode==='semi')?'readonly':''} style="width:100%;text-align:center;border:1.5px solid ${parseFloat(inp)?'#90CAF9':'#E0E0E0'};border-radius:5px;font-size:10px;padding:3px;background:${parseFloat(inp)?'#E3F2FD':'#fff'};font-family:inherit;${(PRO.mode==='auto'||PRO.mode==='semi')?'opacity:.5;':''}" oninput="updProdVal('${p.replace(/'/g,"\\'")}','input',this)"></td>
       <td style="padding:1px 2px"><input type="text" inputmode="decimal" value="${out}" placeholder="0" ${(PRO.mode==='auto'||PRO.mode==='semi')?'readonly':''} style="width:100%;text-align:center;border:1.5px solid ${parseFloat(out)?'#90CAF9':'#E0E0E0'};border-radius:5px;font-size:10px;padding:3px;background:${parseFloat(out)?'#E3F2FD':'#fff'};font-family:inherit;${(PRO.mode==='auto'||PRO.mode==='semi')?'opacity:.5;':''}" oninput="updProdVal('${p.replace(/'/g,"\\'")}','output',this)"></td>
-      <td style="padding:1px 2px"><input type="text" inputmode="decimal" value="${wst}" placeholder="0" ${PRO.mode==='auto'?'readonly':''} style="width:100%;text-align:center;border:1.5px solid ${parseFloat(wst)?'#FFB74D':'#E0E0E0'};border-radius:5px;font-size:10px;padding:3px;background:${parseFloat(wst)?'#FFF3E0':'#fff'};font-family:inherit;${PRO.mode==='auto'?'opacity:.5;':''}" oninput="${PRO.mode==='semi'?'onWasteChangeSemi':'updProdVal'}('${p.replace(/'/g,"\\'")}',${PRO.mode==='semi'?'':'\'waste\','}this)"></td>
+      <td style="padding:1px 2px"><input type="text" inputmode="decimal" value="${wst}" placeholder="0" ${PRO.mode==='auto'?'readonly':''} style="width:100%;text-align:center;border:1.5px solid ${parseFloat(wst)?'#FFB74D':'#E0E0E0'};border-radius:5px;font-size:10px;padding:3px;background:${parseFloat(wst)?'#FFF3E0':'#fff'};font-family:inherit;${PRO.mode==='auto'?'opacity:.5;':''}" oninput="${PRO.mode==='semi'?'onWasteChangeSemi':'updProdVal'}('${p.replace(/'/g,"\\'")}',${PRO.mode==='semi'?'':'\'waste\','}this)" onblur="${PRO.mode==='semi'?'onWasteBlurSemi(\''+p.replace(/'/g,'\\\'')+'\',this)':''}"></td>
       <td id="ptot-${idx}" style="padding:3px 2px;text-align:center;font-weight:800;font-size:10px;background:${total>0?'#E8F5E9':total<0?'#FFEBEE':'#F5F5F5'};color:${total>0?'#2E7D32':total<0?'#C62828':'#90A4AE'}">${total===0?'—':(total>0?'+':'')+total.toFixed(total%1===0?0:2)}</td>
     </tr>`;
   }).join('');
@@ -4581,6 +4581,7 @@ function setProdMode(mode){
   });
 }
 function onWasteChangeSemi(p,el){
+  // Just save waste value while typing (don't recalculate yet)
   const v=normalizeNum(el.value);
   if(v!==el.value){
     const pos=el.selectionStart;el.value=v;
@@ -4588,31 +4589,47 @@ function onWasteChangeSemi(p,el){
   }
   if(!PRO.items[p])PRO.items[p]={ba:0,input:'',output:'',waste:''};
   PRO.items[p].waste=v;
-  if((PRO.mode||'manual')==='semi'){
+  saveDraft();
+}
+function onWasteBlurSemi(p,el){
+  // On blur: recalculate input/output based on waste
+  if((PRO.mode||'manual')!=='semi')return;
+  const v=normalizeNum(el.value);
+  if(!PRO.items[p])PRO.items[p]={ba:0,input:'',output:'',waste:''};
+  PRO.items[p].waste=v;
+  const wst=parseFloat(v)||0;
+  const inp=parseFloat(PRO.items[p].input)||0;
+  const out=parseFloat(PRO.items[p].output)||0;
+  if(inp>0){
+    // Has input: subtract waste from input
+    const newInp=Math.max(0,inp-wst);
+    PRO.items[p].input=newInp>0?newInp.toFixed(2):'';
+    PRO.items[p].output='';
+  } else if(out>0){
+    // Has output: add waste to output
+    const newOut=out+wst;
+    PRO.items[p].output=newOut>0?newOut.toFixed(2):'';
+    PRO.items[p].input='';
+  } else {
+    // Nothing yet - use B-A logic
     const ba=parseFloat(PRO.items[p].ba)||0;
-    const wst=parseFloat(v)||0;
-    if(ba<0){
-      PRO.items[p].input=Math.max(0,Math.abs(ba)-wst).toFixed(2);
-      PRO.items[p].output='';
-    } else {
-      PRO.items[p].input='';
-      PRO.items[p].output=(ba+wst).toFixed(2);
-    }
-    // Update input/output fields directly without re-render (to keep focus)
-    const idx=PRODUCTS.indexOf(p);
-    const inpEl=el.closest('tr')?.querySelector('td:nth-child(5) input');
-    const outEl=el.closest('tr')?.querySelector('td:nth-child(6) input');
-    if(inpEl){inpEl.value=PRO.items[p].input;inpEl.style.borderColor=parseFloat(PRO.items[p].input)?'#90CAF9':'#E0E0E0';inpEl.style.background=parseFloat(PRO.items[p].input)?'#E3F2FD':'#fff';}
-    if(outEl){outEl.value=PRO.items[p].output;outEl.style.borderColor=parseFloat(PRO.items[p].output)?'#90CAF9':'#E0E0E0';outEl.style.background=parseFloat(PRO.items[p].output)?'#E3F2FD':'#fff';}
-    // Update total cell
-    const total=prodTotal(PRO.items[p]);
-    const totEl=document.getElementById('ptot-'+idx);
-    if(totEl){
-      const is500=!!C_MAP[p];
-      totEl.textContent=total===0?'—':(total>0?'+':'')+total.toFixed(total%1===0?0:2)+(is500?' p':'');
-      totEl.style.color=total>0?'#2E7D32':total<0?'#C62828':'#90A4AE';
-      totEl.style.background=total>0?'#E8F5E9':total<0?'#FFEBEE':'#F5F5F5';
-    }
+    if(ba<0){PRO.items[p].input=Math.max(0,Math.abs(ba)-wst).toFixed(2);PRO.items[p].output='';}
+    else if(ba>0){PRO.items[p].input='';PRO.items[p].output=(ba+wst).toFixed(2);}
+  }
+  // Update cells directly
+  const idx=PRODUCTS.indexOf(p);
+  const tr=el.closest('tr');
+  const inpEl=tr?.querySelector('td:nth-child(4) input');
+  const outEl=tr?.querySelector('td:nth-child(5) input');
+  if(inpEl){inpEl.value=PRO.items[p].input||'';inpEl.style.borderColor=parseFloat(PRO.items[p].input)?'#90CAF9':'#E0E0E0';inpEl.style.background=parseFloat(PRO.items[p].input)?'#E3F2FD':'#fff';}
+  if(outEl){outEl.value=PRO.items[p].output||'';outEl.style.borderColor=parseFloat(PRO.items[p].output)?'#90CAF9':'#E0E0E0';outEl.style.background=parseFloat(PRO.items[p].output)?'#E3F2FD':'#fff';}
+  const total=prodTotal(PRO.items[p]);
+  const totEl=document.getElementById('ptot-'+idx);
+  if(totEl){
+    const is500=!!C_MAP[p];
+    totEl.textContent=total===0?'—':(total>0?'+':'')+total.toFixed(total%1===0?0:2)+(is500?' p':'');
+    totEl.style.color=total>0?'#2E7D32':total<0?'#C62828':'#90A4AE';
+    totEl.style.background=total>0?'#E8F5E9':total<0?'#FFEBEE':'#F5F5F5';
   }
   updateProductionTotals();
   saveDraft();
