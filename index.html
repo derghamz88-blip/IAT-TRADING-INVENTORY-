@@ -2197,16 +2197,15 @@ function renderDiff(){
         <div style="font-size:15px;font-weight:700;color:${grandD>0?'#2E7D32':grandD<0?'#C62828':'#546E7A'}">${grandD>=0?'+':''}${grandD.toFixed(2)}</div>
         <div style="font-size:9px;color:#78909C">Diff</div></div>
     </div>
-    <div style="border-radius:9px;border:1px solid #ECEFF1;overflow:hidden">
-    <table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed">
-      <colgroup><col style="width:24px"><col><col style="width:70px"><col style="width:70px"><col style="width:75px"><col style="width:75px"></colgroup>
+    <div style="border-radius:9px;border:1px solid #ECEFF1;overflow-x:auto;-webkit-overflow-scrolling:touch">
+    <table style="border-collapse:collapse;font-size:11px;min-width:520px">
       <thead><tr style="background:#263238;color:#fff">
-        <th style="padding:4px 5px;text-align:center">#</th>
-        <th style="padding:4px 5px">Product</th>
-        <th style="padding:3px 4px;text-align:center;background:#4527A0CC">A<br><small style="font-weight:400;font-size:9px">Qty</small></th>
-        <th style="padding:3px 4px;text-align:center;background:#00695CCC">B<br><small style="font-weight:400;font-size:9px">Qty</small></th>
-        <th style="padding:3px 4px;text-align:center;background:#BF360C">B−A<br><small style="font-weight:400;font-size:9px">Qty</small></th>
-        <th style="padding:3px 4px;text-align:center;background:#1565C0">B−A<br><small style="font-weight:400;font-size:9px">Comb KG</small></th>
+        <th style="padding:4px 5px;text-align:center;width:22px;position:sticky;left:0;background:#263238;z-index:2">#</th>
+        <th style="padding:4px 8px;text-align:left;width:120px;position:sticky;left:22px;background:#263238;z-index:2">Product</th>
+        <th style="padding:3px 4px;text-align:center;width:90px;background:#4527A0">A<br><small style="font-weight:400;font-size:9px">Qty</small></th>
+        <th style="padding:3px 4px;text-align:center;width:90px;background:#00695C">B<br><small style="font-weight:400;font-size:9px">Qty</small></th>
+        <th style="padding:3px 4px;text-align:center;width:90px;background:#BF360C">B−A<br><small style="font-weight:400;font-size:9px">Qty</small></th>
+        <th style="padding:3px 4px;text-align:center;width:90px;background:#1565C0">B−A<br><small style="font-weight:400;font-size:9px">Comb KG</small></th>
       </tr></thead><tbody>`;
 
   // Show all products with Qty, plus Combined KG column (parents only, summed with children)
@@ -2234,8 +2233,8 @@ function renderDiff(){
       combCell=`<td style="padding:4px 5px;text-align:center;color:#CFD8DC;background:#F8F8FF">—</td>`;
     }
     h+=`<tr style="background:${i%2===0?'#fff':'#FAFAFA'};border-bottom:1px solid #EFEFEF">
-      <td style="padding:3px 4px;color:#BDBDBD;font-size:9px;text-align:center">${PRODUCTS.indexOf(p)+1}</td>
-      <td style="padding:1px 4px;font-weight:700;color:${pColor};font-size:10px;white-space:nowrap">${p}${isPcs?'<div style="font-size:8px;color:#90A4AE">↗ '+C_MAP[p]+'</div>':''}</td>
+      <td style="padding:3px 4px;color:#BDBDBD;font-size:9px;text-align:center;position:sticky;left:0;background:${i%2===0?'#fff':'#FAFAFA'};z-index:1;border-right:1px solid #E0E0E0">${PRODUCTS.indexOf(p)+1}</td>
+      <td style="padding:4px 8px;font-weight:700;color:${pColor};font-size:11px;white-space:nowrap;position:sticky;left:22px;background:${i%2===0?'#fff':'#FAFAFA'};z-index:1;border-right:2px solid #E0E0E0">${p}${isPcs?'<div style="font-size:8px;color:#90A4AE;font-weight:400">↗ '+C_MAP[p]+'</div>':''}</td>
       <td style="padding:4px 5px;text-align:center;color:${qA!==0?'#4527A0':'#CFD8DC'}">${qA!==0?qA.toFixed(2)+' <small>'+unit+'</small>':'—'}</td>
       <td style="padding:4px 5px;text-align:center;color:${qB!==0?'#00695C':'#CFD8DC'}">${qB!==0?qB.toFixed(2)+' <small>'+unit+'</small>':'—'}</td>
       <td style="padding:4px 5px;text-align:center;font-weight:700;color:${dColor};background:${d>0?'#F1F8E9':d<0?'#FFF5F5':'#F5F5F5'}">${d!==0?(d>0?'+':'')+d.toFixed(2)+' <small>'+unit+'</small>':'—'}</td>
@@ -2244,11 +2243,12 @@ function renderDiff(){
   });
   const dTotal=grandD;
   h+=`<tr style="background:#263238;color:#fff;font-weight:700">
-    <td colspan="2" style="padding:7px 7px">TOTAL</td>
-    <td style="text-align:center;background:#4527A0CC">${grandA.toFixed(2)}</td>
-    <td style="text-align:center;background:#00695CCC">${grandB.toFixed(2)}</td>
-    <td style="text-align:center;background:#BF360C">${dTotal>=0?'+':''}${dTotal.toFixed(2)}</td>
-    <td style="text-align:center;background:#1565C0">${grandD>=0?'+':''}${grandD.toFixed(2)} kg</td>
+    <td style="padding:7px 5px;text-align:center;position:sticky;left:0;background:#263238;z-index:1"></td>
+    <td style="padding:7px 8px;position:sticky;left:22px;background:#263238;z-index:1;white-space:nowrap">TOTAL</td>
+    <td style="text-align:center;padding:7px 5px;background:#4527A0">${grandA.toFixed(2)}</td>
+    <td style="text-align:center;padding:7px 5px;background:#00695C">${grandB.toFixed(2)}</td>
+    <td style="text-align:center;padding:7px 5px;background:#BF360C">${dTotal>=0?'+':''}${dTotal.toFixed(2)}</td>
+    <td style="text-align:center;padding:7px 5px;background:#1565C0">${grandD>=0?'+':''}${grandD.toFixed(2)} kg</td>
   </tr></tbody></table></div></div>`;
   return h;
 }
@@ -3216,16 +3216,27 @@ function renderProductionRows(srch){
     const ba=parseFloat(it.ba)||0;
     const inp=it.input||'',out=it.output||'',wst=it.waste||'';
     const total=ba+(parseFloat(inp)||0)+(parseFloat(wst)||0)-(parseFloat(out)||0);
-    const is500=!!C_MAP[p]; // pcs product
+    const is500=!!C_MAP[p]; // pcs product (child)
     const unit=is500?'pcs':'kg';
-    // Combined: for pcs products, ba is in pcs → convert to kg (*0.5); for kg products, keep as is
-    const baComb=is500?ba*0.5:ba;
-    const totalComb=is500?(baComb+(parseFloat(inp)||0)*0.5+(parseFloat(wst)||0)*0.5-(parseFloat(out)||0)*0.5):total;
+    // Combined KG: only for parent products - sum parent kg + children pcs*0.5
+    const children=PRODUCTS.filter(c=>C_MAP[c]===p);
+    const baKgSelf=is500?0:ba;
+    const baChildSum=children.reduce((s,c)=>{
+      const cIt=PRO.items[c]||{};return s+(parseFloat(cIt.ba)||0)*0.5;
+    },0);
+    const baComb=is500?null:baKgSelf+baChildSum;
+    const inpKgSelf=is500?0:(parseFloat(inp)||0);
+    const inpChildSum=children.reduce((s,c)=>{const cIt=PRO.items[c]||{};return s+(parseFloat(cIt.input)||0)*0.5;},0);
+    const outKgSelf=is500?0:(parseFloat(out)||0);
+    const outChildSum=children.reduce((s,c)=>{const cIt=PRO.items[c]||{};return s+(parseFloat(cIt.output)||0)*0.5;},0);
+    const wstKgSelf=is500?0:(parseFloat(wst)||0);
+    const wstChildSum=children.reduce((s,c)=>{const cIt=PRO.items[c]||{};return s+(parseFloat(cIt.waste)||0)*0.5;},0);
+    const totalComb=is500?null:(baComb+(inpKgSelf+inpChildSum)+(wstKgSelf+wstChildSum)-(outKgSelf+outChildSum));
     return`<tr style="background:${idx%2===0?'#fff':'#FAFAFA'};border-bottom:1px solid #EFEFEF">
-      <td style="padding:3px 4px;color:#BDBDBD;font-size:9px;text-align:center">${idx+1}</td>
-      <td style="padding:4px 5px;font-size:11px;font-weight:600;color:${is500?'#9C27B0':'#37474F'};white-space:nowrap">${p}</td>
+      <td style="padding:3px 4px;color:#BDBDBD;font-size:9px;text-align:center;position:sticky;left:0;background:${idx%2===0?'#fff':'#FAFAFA'};z-index:1">${idx+1}</td>
+      <td style="padding:4px 8px;font-size:11px;font-weight:600;color:${is500?'#9C27B0':'#37474F'};white-space:nowrap;position:sticky;left:22px;background:${idx%2===0?'#fff':'#FAFAFA'};z-index:1;border-right:2px solid #E0E0E0">${p}${is500?'<div style="font-size:8px;color:#90A4AE;font-weight:400">↗ '+C_MAP[p]+'</div>':''}</td>
       <td style="padding:4px 5px;text-align:center;font-weight:800;font-size:11px;background:${ba>0?'#E8F5E9':ba<0?'#FFEBEE':'#F5F5F5'};color:${ba>0?'#2E7D32':ba<0?'#C62828':'#90A4AE'}">${ba===0?'—':(ba>0?'+':'')+ba.toFixed(ba%1===0?0:2)+(is500?' p':'')}</td>
-      <td style="padding:4px 5px;text-align:center;font-size:10px;background:#EEF2FF;color:${baComb>0?'#1565C0':baComb<0?'#C62828':'#9E9E9E'}">${baComb===0?'—':(baComb>0?'+':'')+baComb.toFixed(2)+' kg'}</td>
+      <td style="padding:4px 5px;text-align:center;font-size:10px;background:${is500?'#F8F8FF':'#EEF2FF'};color:${is500?'#CFD8DC':baComb>0?'#1565C0':baComb<0?'#C62828':'#9E9E9E'}">${is500?'—':baComb===0?'—':(baComb>0?'+':'')+baComb.toFixed(2)+' kg'}</td>
       <td style="padding:3px 3px"><input type="text" inputmode="decimal" value="${inp}" placeholder="0"
         style="width:48px;text-align:center;border:1.5px solid ${inp&&parseFloat(inp)!==0?'#90CAF9':'#E0E0E0'};border-radius:6px;font-size:11px;padding:4px;background:${inp&&parseFloat(inp)!==0?'#E3F2FD':'#fff'};font-family:inherit"
         oninput="updProdVal('${p.replace(/'/g,"\'")}','input',this)"></td>
@@ -3235,8 +3246,8 @@ function renderProductionRows(srch){
       <td style="padding:3px 3px"><input type="text" inputmode="decimal" value="${wst}" placeholder="0"
         style="width:48px;text-align:center;border:1.5px solid ${wst&&parseFloat(wst)!==0?'#FFB74D':'#E0E0E0'};border-radius:6px;font-size:11px;padding:4px;background:${wst&&parseFloat(wst)!==0?'#FFF3E0':'#fff'};font-family:inherit"
         oninput="updProdVal('${p.replace(/'/g,"\'")}','waste',this)"></td>
-      <td id="ptot-${idx}" style="padding:4px 5px;text-align:center;font-weight:800;font-size:11px;background:${total>0?'#E8F5E9':total<0?'#FFEBEE':'#F5F5F5'};color:${total>0?'#2E7D32':total<0?'#C62828':'#90A4AE'}">${total===0?'—':(total>0?'+':'')+total.toFixed(total%1===0?0:2)+(is500?' p':'')}</td>
-      <td id="ptotc-${idx}" style="padding:4px 5px;text-align:center;font-size:10px;background:#E8F5E9AA;color:${totalComb>0?'#1B5E20':totalComb<0?'#C62828':'#9E9E9E'}">${totalComb===0?'—':(totalComb>0?'+':'')+totalComb.toFixed(2)+' kg'}</td>
+      <td id="ptot-${idx}" style="padding:4px 5px;text-align:center;font-weight:800;font-size:11px;background:${total>0?'#E8F5E9':total<0?'#FFEBEE':'#F5F5F5'};color:${total>0?'#2E7D32':total<0?'#C62828':'#90A4AE'}">${total===0?'—':(total>0?'+':'')+total.toFixed(total%1===0?0:2)+(is500?' pcs':'')}</td>
+      <td id="ptotc-${idx}" style="padding:4px 5px;text-align:center;font-size:10px;background:${is500?'#F8F8FF':'#E8F5E9AA'};color:${is500?'#CFD8DC':totalComb>0?'#1B5E20':totalComb<0?'#C62828':'#9E9E9E'}">${is500?'—':totalComb===0?'—':(totalComb>0?'+':'')+totalComb.toFixed(2)+' kg'}</td>
     </tr>`;
   }).join('');
 }
@@ -3333,20 +3344,21 @@ function renderProductionForm(){
   <div class="card">
     <input class="srch" id="prod-srch-inp" type="text" placeholder="🔍 Search..." value="${S.pSearch||''}" oninput="updProdSearch(this.value)" style="margin-bottom:8px;width:100%">
     <div style="overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+    <table style="border-collapse:collapse;min-width:600px">
       <thead><tr style="background:${inf.color};color:#fff">
-        <th style="padding:4px 5px;font-size:10px;text-align:center;width:20px">#</th>
-        <th style="padding:4px 5px;font-size:10px;text-align:left">Product</th>
-        <th style="padding:4px 5px;font-size:10px;text-align:center;width:50px;background:#BF360C">B−A</th>
-        <th style="padding:4px 5px;font-size:9px;text-align:center;width:50px;background:#BF360C99">B−A<br>Comb</th>
-        <th style="padding:4px 5px;font-size:10px;text-align:center;width:50px">Input</th>
-        <th style="padding:4px 5px;font-size:10px;text-align:center;width:50px">Output</th>
-        <th style="padding:4px 5px;font-size:10px;text-align:center;width:50px;background:#E65100">Waste</th>
-        <th style="padding:4px 5px;font-size:10px;text-align:center;width:50px;background:#1B5E20">Total</th>
-        <th style="padding:4px 5px;font-size:9px;text-align:center;width:50px;background:#1B5E2099">Total<br>Comb</th>
+        <th style="padding:4px 5px;font-size:10px;text-align:center;width:22px;position:sticky;left:0;background:${inf.color};z-index:2">#</th>
+        <th style="padding:4px 8px;font-size:10px;text-align:left;width:110px;position:sticky;left:22px;background:${inf.color};z-index:2;border-right:2px solid rgba(255,255,255,.3)">Product</th>
+        <th style="padding:4px 5px;font-size:10px;text-align:center;width:70px;background:#BF360C">B−A<br><small style="font-weight:400;font-size:9px">Qty</small></th>
+        <th style="padding:4px 5px;font-size:9px;text-align:center;width:70px;background:#BF360C99">B−A<br>Comb KG</th>
+        <th style="padding:4px 5px;font-size:10px;text-align:center;width:60px">Input</th>
+        <th style="padding:4px 5px;font-size:10px;text-align:center;width:60px">Output</th>
+        <th style="padding:4px 5px;font-size:10px;text-align:center;width:60px;background:#E65100">Waste</th>
+        <th style="padding:4px 5px;font-size:10px;text-align:center;width:70px;background:#1B5E20">Total<br><small style="font-weight:400;font-size:9px">Qty</small></th>
+        <th style="padding:4px 5px;font-size:9px;text-align:center;width:70px;background:#1B5E2099">Total<br>Comb KG</th>
       </tr></thead>
       <tbody id="prod-tbody">${renderProductionRows(S.pSearch||'')}</tbody>
-    </table>
+    </table></div>
     </div>
   </div>`;
 }
