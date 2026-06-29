@@ -321,13 +321,14 @@ const TABS=[
   {key:'stocksummary', emoji:'📊',ar:'Sys.Stock',    color:'#6A1B9A',light:'#F3E5F5',border:'#CE93D8'},
   {key:'waste',        emoji:'♻️',ar:'Waste',        color:'#37474F',light:'#ECEFF1',border:'#B0BEC5'},
   {key:'production',   emoji:'🏭',ar:'Production',   color:'#D84315',light:'#FBE9E7',border:'#FFAB91'},
+  {key:'frozen',       emoji:'❄️',ar:'Frozen',       color:'#0277BD',light:'#E1F5FE',border:'#4FC3F7'},
   {key:'records',      emoji:'📋',ar:'Records',      color:'#0288D1',light:'#E1F5FE',border:'#81D4FA'},
   {key:'formulaA',     emoji:'🧮',ar:'Formula A',    color:'#4527A0',light:'#EDE7F6',border:'#B39DDB'},
   {key:'formulaB',     emoji:'🧮',ar:'Formula B',    color:'#00695C',light:'#E0F2F1',border:'#80CBC4'},
   {key:'diff',         emoji:'⚖️',ar:'Difference',   color:'#BF360C',light:'#FBE9E7',border:'#FFAB91'},
   {key:'settings',     emoji:'⚙️',ar:'Settings',     color:'#455A64',light:'#ECEFF1',border:'#B0BEC5'},
 ];
-const TABS_R1=['inventory','receivables','returns','sales','daysales','stocksummary','waste','production'];
+const TABS_R1=['inventory','receivables','returns','sales','daysales','stocksummary','waste','production','frozen'];
 const TABS_R2=['records','formulaA','formulaB','diff','settings'];
 
 const TYPE_INFO={
@@ -341,7 +342,7 @@ const TYPE_INFO={
 };
 
 // ═══ STORAGE KEYS ═══════════════════════════════════
-const SK='chk-inv-v3',SK_P='chk-prods-v1',SK_M='chk-map-v1',SK_SM='chk-stk-v1',SK_FA='chk-fa-v1',SK_FB='chk-fb-v1',SK_NWC='chk-nwc-types';
+const SK='chk-inv-v3',SK_P='chk-prods-v1',SK_M='chk-map-v1',SK_SM='chk-stk-v1',SK_FA='chk-fa-v1',SK_FB='chk-fb-v1',SK_NWC='chk-nwc-types',SK_FP='chk-frozen-prods-v1';
 
 // ═══ DYNAMIC PRODUCTS ═══════════════════════════════
 let PRODUCTS=[],PARENT_PRODUCTS=[],C_MAP={};
@@ -372,14 +373,14 @@ let S={tab:'inventory',view:'list',record:null,search:'',expanded:new Set(),
        listFrom:'',listTo:'',gFrom:'',gTo:'',
        faShowDetail:false,fbShowDetail:false,
        _prodNWC:{}}; // per-product NWC batches
-let D={inventories:[],receivables:[],returns:[],sales:[],daySales:[],stockSummaries:[],waste:[],production:[]};
+let D={inventories:[],receivables:[],returns:[],sales:[],daySales:[],stockSummaries:[],waste:[],production:[],frozen:[]};
 let FA=[],FB=[];
 let UP ={step:'upload',fileName:'',date:'',rows:[],converted:{},unmatched:[]};
 let UPD={step:'upload',fileName:'',date:'',rows:[],converted:{},unmatched:[]};
 let UPS={step:'upload',fileName:'',date:'',rows:[],converted:{},unmatched:[]};
 
 function load(){
-  try{const s=localStorage.getItem(SK);if(s){const d=JSON.parse(s);D={inventories:d.inventories||[],receivables:d.receivables||[],returns:d.returns||[],sales:d.sales||[],daySales:d.daySales||[],stockSummaries:d.stockSummaries||[],waste:d.waste||[],production:d.production||[]};}}
+  try{const s=localStorage.getItem(SK);if(s){const d=JSON.parse(s);D={inventories:d.inventories||[],receivables:d.receivables||[],returns:d.returns||[],sales:d.sales||[],daySales:d.daySales||[],stockSummaries:d.stockSummaries||[],waste:d.waste||[],production:d.production||[],frozen:d.frozen||[]};}}
   catch(e){}
 }
 function save(){
@@ -395,6 +396,7 @@ function gid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 function emptyItems(){const o={};PRODUCTS.forEach(p=>o[p]={kg:'',pcs:''});return o;}
 function newRec(){return{id:gid(),date:new Date().toISOString().split('T')[0],notes:'',items:emptyItems()};}
 function dk(t){
+  if(t==='frozen')return'frozen';
   if(t==='inventory')return'inventories';
   if(t==='receivables')return'receivables';
   if(t==='returns')return'returns';
@@ -419,7 +421,7 @@ function getTotalKg(items,p){
 
 
 // ═══ FORMULA HELPERS ════════════════════════════════
-const REC_TYPE_MAP={inventories:'inventory',receivables:'receivables',returns:'returns',sales:'sales',daySales:'daysales',stockSummaries:'stocksummary',waste:'waste',production:'production'};
+const REC_TYPE_MAP={inventories:'inventory',receivables:'receivables',returns:'returns',sales:'sales',daySales:'daysales',stockSummaries:'stocksummary',waste:'waste',production:'production',frozen:'frozen'};
 
 function findRecord(id){
   for(const[key,type] of Object.entries(REC_TYPE_MAP)){
@@ -561,6 +563,7 @@ function render(){
     if(tab==='receivables'&&view==='receipt') h+=renderReceiptCalc();
     else h+=view==='list'?renderList():renderForm();
   }
+  else if(tab==='frozen')       h+=renderFrozenTab();
   else if(tab==='sales')        h+=view==='form'?renderForm():renderSalesTab();
   else if(tab==='daysales')     h+=view==='form'?renderForm():renderDaySalesTab();
   else if(tab==='stocksummary') h+=view==='form'?renderForm():renderStockTab();
@@ -2267,6 +2270,7 @@ function renderSettings(){
       <button class="stb${S.stab==='stockmap'?' on':''}" onclick="S.stab='stockmap';render()">📊 Stock Map (${SMD.length})</button>
       <button class="stb${S.stab==='sh'?' on':''}" onclick="S.stab='sh';render()">🏭 Slaughterhouses (${SH_DATA.length})</button>
       <button class="stb${S.stab==='rp'?' on':''}" onclick="S.stab='rp';render()">✂️ Cut Products (${RP_DATA.length})</button>
+      <button class="stb${S.stab==='frozen'?' on':''}" onclick="S.stab='frozen';render()">❄️ Frozen Products (${FROZEN_PRODUCTS.length})</button>
       <button class="stb${S.stab==='nwctypes'?' on':''}" onclick="S.stab='nwctypes';render()">⚖️ Containers (${NWC_TYPES.filter(t=>t.key!=='custom').length})</button>
       <button class="stb${S.stab==='api'?' on':''}" onclick="S.stab='api';render()">🔑 API Key</button>
     </div>
@@ -2511,9 +2515,23 @@ function saveStockRec(){
 function renderSalesTab(){return UP.step==='upload'?renderUpload():renderSalesResult();}
 function renderUpload(){
   const inf=ti('sales');const recs=[...D.sales].sort((a,b)=>b.date.localeCompare(a.date));
-  let h=`<div class="card" style="border:1.5px solid ${inf.border}">
-    <h2 style="margin:0 0 5px;font-size:16px;color:${inf.color}">📤 Sales</h2>
-    <p style="color:#78909C;font-size:11px;margin-bottom:14px">Upload your sales Excel file to auto-convert.</p>
+  let h=`<div class="card" style="border:2px solid #1565C0;background:#E3F2FD">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font-size:18px">📊</span>
+      <div style="font-size:14px;font-weight:800;color:#1565C0">Upload Sales + Day Sales Together</div>
+    </div>
+    <div style="font-size:11px;color:#1565C0;margin-bottom:10px">نفس ملف Excel: العمود C للـ Sales، العمود D للـ Day Sales</div>
+    <div class="upload-zone" id="uz-both" onclick="document.getElementById('fi-both').click()"
+      ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDropBoth(event)"
+      style="border-color:#1565C0;background:#fff">
+      <input type="file" id="fi-both" accept=".xlsx,.xls,.csv" onchange="handleFileBoth(this)" style="display:none">
+      <div style="font-size:32px;margin-bottom:6px">⬆️</div>
+      <div style="font-size:13px;font-weight:700;color:#1565C0;margin-bottom:2px">تحميل الملف (Sales + Day Sales)</div>
+      <div style="font-size:10px;color:#78909C">Col B = Name | Col C = Sales Qty | Col D = Day Sales Qty</div>
+    </div></div>
+    <div class="card" style="border:1.5px solid ${inf.border}">
+    <h2 style="margin:0 0 5px;font-size:16px;color:${inf.color}">📤 Sales فقط</h2>
+    <p style="color:#78909C;font-size:11px;margin-bottom:14px">أو ارفع ملف Sales منفصل (Col C).</p>
     <div class="upload-zone" id="uz" onclick="document.getElementById('fi').click()"
       ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)">
       <input type="file" id="fi" accept=".xlsx,.xls,.csv" onchange="handleFile(this)" style="display:none">
@@ -2816,6 +2834,235 @@ function updItem(p,f,el){
   saveDraft(); // auto-save after every input
 }
 
+
+// ─── Publish System ────────────────────────────────
+async function publishReport(){
+  if(!window.$isAdmin){showToast('⚠️ Admin only');return;}
+  const date=new Date().toISOString().split('T')[0];
+  const label=`تقرير يوم ${date}`;
+  if(!confirm('نشر '+label+'؟'))return;
+  showToast('📤 Publishing...');
+  try{
+    await window.$setDoc(window.$doc(window.$db,'published','latest'),{
+      date,label,publishedAt:Date.now(),publishedBy:window.$user.email,
+      summary:{
+        inventoryCount:D.inventories.length,
+        receivablesCount:D.receivables.length,
+        returnsCount:D.returns.length,
+        salesCount:D.sales.length,
+      }
+    });
+    showToast('✅ تم النشر: '+label);
+  }catch(e){showToast('❌ Error: '+e.message);}
+}
+window.publishReport=publishReport;
+
+async function checkPublished(){
+  if(!window.$db||window.$isAdmin)return;
+  try{
+    const snap=await window.$getDoc(window.$doc(window.$db,'published','latest'));
+    if(!snap.exists())return;
+    const pub=snap.data();
+    // Show notification banner
+    const existing=document.getElementById('pub-banner');
+    if(existing)existing.remove();
+    const b=document.createElement('div');
+    b.id='pub-banner';
+    b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9997;background:linear-gradient(90deg,#1B5E20,#2E7D32);color:#fff;padding:8px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.3)';
+    b.innerHTML=`<span style="font-size:18px">📊</span>
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:700">${pub.label} — جاهز!</div>
+        <div style="font-size:10px;opacity:.85">نُشر بواسطة ${pub.publishedBy}</div>
+      </div>
+      <button onclick="document.getElementById('pub-banner').remove()" style="border:none;background:rgba(255,255,255,.2);color:#fff;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer">✕</button>`;
+    document.body.prepend(b);
+  }catch(e){console.log('checkPublished error:',e);}
+}
+window.checkPublished=checkPublished;
+
+
+// ─── Frozen Products ──────────────────────────────
+// Each frozen product: {id, name, unit, kgFactor}
+// unit: 'CTN','KG','PCS', etc. kgFactor: how many KG per unit
+let FROZEN_PRODUCTS=[
+  {id:1,name:'CHI. BREAST 12 KG FRZN (LENA)',unit:'CTN',kgFactor:12},
+  {id:2,name:'CHI. BREAST BRZ. 6*2kg (SUPER FRANGO)',unit:'CTN',kgFactor:12},
+  {id:3,name:'CHI. BREAST FRZN 12kg (Safi)',unit:'CTN',kgFactor:12},
+  {id:4,name:'CHICKEN BREAST TENDERIZED BAL.',unit:'KG',kgFactor:1},
+  {id:5,name:'CHICKEN GRILLER 10*1100gm',unit:'CTN',kgFactor:11},
+  {id:6,name:'CHICKEN THIGH FRZN 12kg B/L/SL (Premium)',unit:'CTN',kgFactor:12},
+  {id:7,name:'CHI. THIGH CHILLED BL/SL',unit:'KG',kgFactor:1},
+  {id:8,name:'FRENCH FRIES',unit:'CTN',kgFactor:10},
+  {id:9,name:'OPTIBIND POWDER',unit:'KG',kgFactor:1},
+  {id:10,name:'T- CHI. BREAST TENDERIZED',unit:'KG',kgFactor:1},
+  {id:11,name:'T-CHICKENCO TENDERIZED 400G',unit:'PCS',kgFactor:0.4},
+  {id:12,name:'T-CHICKENCO TENDERIZED 500g',unit:'PCS',kgFactor:0.5},
+  {id:13,name:'F- CHICKEN MINCED',unit:'KG',kgFactor:1},
+];
+function loadFrozenProducts(){try{const s=localStorage.getItem(SK_FP);if(s)FROZEN_PRODUCTS=JSON.parse(s);}catch(e){}}
+function saveFrozenProducts(){try{localStorage.setItem(SK_FP,JSON.stringify(FROZEN_PRODUCTS));_scheduleSave();}catch(e){}}
+
+// ─── Frozen Tab Render ────────────────────────────
+function renderFrozenTab(){
+  const inf=ti('frozen');
+  if(S.view==='form')return renderFrozenForm();
+  const recs=[...D.frozen].sort((a,b)=>b.date.localeCompare(a.date));
+  let h=`<div class="card" style="border:1.5px solid ${inf.border}">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <h2 style="margin:0;font-size:16px;color:${inf.color}">❄️ Frozen</h2>
+        <div style="font-size:11px;color:#78909C">${recs.length} record(s)</div>
+      </div>
+      <button class="btn" style="background:${inf.color};color:#fff;padding:7px 16px" onclick="startNew()">+ New Frozen</button>
+    </div></div>`;
+  recs.forEach(r=>h+=renderFrozenCard(r,inf));
+  return h;
+}
+
+function renderFrozenCard(r,inf){
+  const totalKg=FROZEN_PRODUCTS.reduce((s,p)=>{
+    const qty=parseFloat(r.items?.[p.id])||0;
+    return s+qty*p.kgFactor;
+  },0);
+  const prods=FROZEN_PRODUCTS.filter(p=>parseFloat(r.items?.[p.id])>0).length;
+  const exp=S.expanded.has(r.id);
+  return`<div class="card" style="border:1.5px solid ${inf.border};margin-bottom:8px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-weight:700;color:${inf.color};font-size:13px">${r.date}</div>
+        ${r.notes?`<div style="font-size:11px;color:#78909C">${r.notes}</div>`:''}
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="text-align:right">
+          <div style="font-weight:800;color:${inf.color};font-size:14px">${totalKg.toFixed(2)} <small style="font-size:10px">KG</small></div>
+          <div style="font-size:10px;color:#78909C">${prods} products</div>
+        </div>
+        <button onclick="toggleCard('${r.id}')" style="border:none;background:${inf.color};color:#fff;border-radius:7px;width:32px;height:32px;cursor:pointer;font-size:13px">${exp?'▲':'▼'}</button>
+        <button onclick="editRec('${r.id}')" style="border:none;background:#FFF8E1;color:#F57F17;border-radius:7px;width:32px;height:32px;cursor:pointer;font-size:14px">✏️</button>
+        <button onclick="delRec('${r.id}')" style="border:none;background:#FFEBEE;color:#C62828;border-radius:7px;width:32px;height:32px;cursor:pointer;font-size:14px">♻️</button>
+      </div>
+    </div>
+    ${exp?renderFrozenCardDetail(r,inf):''}
+  </div>`;
+}
+
+function renderFrozenCardDetail(r,inf){
+  const rows=FROZEN_PRODUCTS.filter(p=>parseFloat(r.items?.[p.id])>0);
+  if(!rows.length)return'<div style="color:#90A4AE;font-size:11px;padding:8px">No items</div>';
+  return`<div style="margin-top:8px;border-top:1px solid ${inf.border};padding-top:8px">
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="background:#263238;color:#fff">
+        <th style="padding:4px 6px;text-align:left">Product</th>
+        <th style="padding:4px 6px;text-align:center">Qty</th>
+        <th style="padding:4px 6px;text-align:center">Unit</th>
+        <th style="padding:4px 6px;text-align:center">KG</th>
+      </tr></thead><tbody>
+    ${rows.map((p,i)=>{
+      const qty=parseFloat(r.items?.[p.id])||0;
+      const kg=qty*p.kgFactor;
+      return`<tr style="background:${i%2===0?'#fff':'#F5F5F5'}">
+        <td style="padding:3px 6px;font-weight:600">${p.name}</td>
+        <td style="padding:3px 6px;text-align:center">${qty}</td>
+        <td style="padding:3px 6px;text-align:center;color:#0277BD">${p.unit}</td>
+        <td style="padding:3px 6px;text-align:center;font-weight:700;color:${inf.color}">${kg.toFixed(2)}</td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>
+  </div>`;
+}
+
+function renderFrozenForm(){
+  const inf=ti('frozen');
+  const r=S.record;
+  const totalKg=FROZEN_PRODUCTS.reduce((s,p)=>{
+    const qty=parseFloat(r.items?.[p.id])||0;
+    return s+qty*p.kgFactor;
+  },0);
+  const prods=FROZEN_PRODUCTS.filter(p=>parseFloat(r.items?.[p.id])>0).length;
+  return`<div class="card" style="border:1.5px solid ${inf.border}">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+      <h2 style="margin:0;font-size:15px;color:${inf.color};flex:1">❄️ ${r.id?'Edit':'New'} Frozen</h2>
+      <button class="btn" style="background:#ECEFF1;color:#546E7A" onclick="cancelForm()">← Back</button>
+      <button class="btn" style="background:${inf.color};color:#fff;padding:7px 15px" onclick="saveRec()">💾 Save</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <div style="flex:1">
+        <div style="font-size:10px;color:#78909C;margin-bottom:3px">📅 Date</div>
+        <input type="date" value="${r.date||''}" oninput="S.record.date=this.value;saveDraft()"
+          style="width:100%;padding:8px;border:1.5px solid #E0E0E0;border-radius:8px;font-size:13px">
+      </div>
+      <div style="flex:2">
+        <div style="font-size:10px;color:#78909C;margin-bottom:3px">📝 Notes</div>
+        <input type="text" value="${r.notes||''}" placeholder="Notes..." oninput="S.record.notes=this.value;saveDraft()"
+          style="width:100%;padding:8px;border:1.5px solid #E0E0E0;border-radius:8px;font-size:13px">
+      </div>
+    </div>
+    <div style="background:#E1F5FE;border-radius:8px;padding:8px 12px;margin-bottom:12px;display:flex;gap:16px">
+      <div><span style="font-size:11px;color:#0277BD">Total KG:</span> <strong style="color:${inf.color};font-size:14px">${totalKg.toFixed(2)}</strong></div>
+      <div><span style="font-size:11px;color:#0277BD">Products:</span> <strong style="color:${inf.color}">${prods}</strong></div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="background:#263238;color:#fff">
+        <th style="padding:4px 6px;text-align:left">Product</th>
+        <th style="padding:4px 4px;text-align:center;width:70px">Qty</th>
+        <th style="padding:4px 4px;text-align:center;width:40px">Unit</th>
+        <th style="padding:4px 4px;text-align:center;width:55px">KG</th>
+      </tr></thead><tbody>
+    ${FROZEN_PRODUCTS.map((p,i)=>{
+      const qty=parseFloat(r.items?.[p.id])||0;
+      const kg=qty*p.kgFactor;
+      const hasVal=qty>0;
+      return`<tr style="background:${hasVal?inf.light:i%2===0?'#fff':'#FAFAFA'};border-bottom:1px solid #EFEFEF">
+        <td style="padding:3px 6px;font-weight:${hasVal?700:400};color:${hasVal?inf.color:'#455A64'};font-size:10px">${p.name}</td>
+        <td style="padding:2px 3px"><input type="text" inputmode="decimal" value="${qty||''}" placeholder="0"
+          style="width:100%;text-align:center;border:1.5px solid ${hasVal?'#4FC3F7':'#E0E0E0'};border-radius:5px;font-size:11px;padding:3px;background:${hasVal?'#E1F5FE':'#fff'};font-family:inherit"
+          oninput="if(!S.record.items)S.record.items={};S.record.items[${p.id}]=normalizeNum(this.value);render()" enterkeyhint="next"></td>
+        <td style="padding:3px 4px;text-align:center;color:#0277BD;font-weight:600">${p.unit}</td>
+        <td style="padding:3px 4px;text-align:center;font-weight:700;color:${hasVal?inf.color:'#CFD8DC'}">${hasVal?kg.toFixed(2):'—'}</td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>
+  </div>`;
+}
+
+// ─── Frozen Settings ──────────────────────────────
+function renderFrozenSettings(){
+  return`<div style="margin-top:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-size:13px;font-weight:700;color:#0277BD">❄️ Frozen Products (${FROZEN_PRODUCTS.length})</div>
+      <button class="btn" style="background:#0277BD;color:#fff;font-size:11px" onclick="addFrozenProduct()">+ Add</button>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="background:#263238;color:#fff">
+        <th style="padding:4px 6px;text-align:left">Name</th>
+        <th style="padding:4px 4px;text-align:center;width:45px">Unit</th>
+        <th style="padding:4px 4px;text-align:center;width:50px">KG/Unit</th>
+        <th style="padding:4px 4px;width:30px"></th>
+      </tr></thead><tbody>
+    ${FROZEN_PRODUCTS.map((p,i)=>`<tr style="background:${i%2===0?'#fff':'#F5F5F5'};border-bottom:1px solid #EFEFEF">
+      <td style="padding:2px 4px"><input type="text" value="${p.name}"
+        style="width:100%;border:1px solid #E0E0E0;border-radius:4px;font-size:10px;padding:3px;font-family:inherit"
+        onchange="FROZEN_PRODUCTS[${i}].name=this.value;saveFrozenProducts()"></td>
+      <td style="padding:2px 3px"><input type="text" value="${p.unit}"
+        style="width:100%;border:1px solid #E0E0E0;border-radius:4px;font-size:10px;padding:3px;text-align:center;font-family:inherit"
+        onchange="FROZEN_PRODUCTS[${i}].unit=this.value;saveFrozenProducts()"></td>
+      <td style="padding:2px 3px"><input type="text" inputmode="decimal" value="${p.kgFactor}"
+        style="width:100%;border:1px solid #E0E0E0;border-radius:4px;font-size:10px;padding:3px;text-align:center;font-family:inherit"
+        onchange="FROZEN_PRODUCTS[${i}].kgFactor=parseFloat(this.value)||1;saveFrozenProducts()"></td>
+      <td style="padding:2px 3px;text-align:center"><button onclick="FROZEN_PRODUCTS.splice(${i},1);saveFrozenProducts();render()"
+        style="border:none;background:#FFEBEE;color:#C62828;border-radius:4px;width:24px;height:24px;cursor:pointer;font-size:12px">🗑</button></td>
+    </tr>`).join('')}
+    </tbody></table>
+  </div>`;
+}
+function addFrozenProduct(){
+  const name=prompt('Product name:');if(!name)return;
+  const unit=prompt('Unit (CTN/KG/PCS):','CTN')||'CTN';
+  const kgFactor=parseFloat(prompt('KG per unit:','12'))||12;
+  FROZEN_PRODUCTS.push({id:Date.now(),name,unit,kgFactor});
+  saveFrozenProducts();render();
+}
+
 // ─── Draft Auto-Save ──────────────────────────────
 const SK_DRAFT='chk-draft';
 function saveDraft(){
@@ -3024,6 +3271,43 @@ function moveRP(i,d){const ni=i+d;if(ni<0||ni>=RP_DATA.length)return;[RP_DATA[i]
 function addRP(){const l=document.getElementById('rp-new-l')?.value.trim(),p=document.getElementById('rp-new-p')?.value,u=document.getElementById('rp-new-u')?.value||'kg';if(!l||!p){alert('Fill all fields');return;}const key='rp_'+Date.now().toString(36);RP_DATA.push({key,label:l,prod:p,unit:u});saveRP();render();}
 function resetRP(){if(!confirm('Reset cut products to defaults?'))return;RP_DATA=JSON.parse(JSON.stringify(DEFAULT_RP));saveRP();render();}
 // Excel
+function processExcelBoth(buf,name){
+  // Process same Excel file for both Sales (col C) and Day Sales (col D)
+  try{
+    const wb=XLSX.read(buf,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    let start=1;for(let i=0;i<Math.min(rows.length,5);i++){if(rows[i].some(c=>String(c).toLowerCase().includes('name'))){start=i+1;break;}}
+    // Sales: col C (row[2])
+    const resultS=[],convertedS={},unmatchedS=[];PRODUCTS.forEach(p=>convertedS[p]=0);
+    // Day Sales: col D (row[3])
+    const resultD=[],convertedD={},unmatchedD=[];PRODUCTS.forEach(p=>convertedD[p]=0);
+    for(let i=start;i<rows.length;i++){
+      const row=rows[i];
+      const rn=String(row[1]||'').trim();
+      if(!rn||rn.toLowerCase()==='total')continue;
+      // Sales col C
+      const qtyS=parseFloat(row[2])||0;
+      const mapS=lookupMap(rn);
+      const entryS={name:rn,qty:qtyS,matched:!!mapS,product:mapS?mapS.p:'',multiplier:mapS?mapS.m:0,converted:mapS?(qtyS*mapS.m):0};
+      resultS.push(entryS);
+      if(mapS&&qtyS>0)convertedS[mapS.p]=(convertedS[mapS.p]||0)+(qtyS*mapS.m);
+      else if(qtyS>0)unmatchedS.push({name:rn,qty:qtyS});
+      // Day Sales col D
+      const qtyD=parseFloat(row[3])||0;
+      const mapD=lookupMap(rn);
+      const entryD={name:rn,qty:qtyD,matched:!!mapD,product:mapD?mapD.p:'',multiplier:mapD?mapD.m:0,converted:mapD?(qtyD*mapD.m):0};
+      resultD.push(entryD);
+      if(mapD&&qtyD>0)convertedD[mapD.p]=(convertedD[mapD.p]||0)+(qtyD*mapD.m);
+      else if(qtyD>0)unmatchedD.push({name:rn,qty:qtyD});
+    }
+    UP={step:'result',fileName:name,date:new Date().toISOString().split('T')[0],rows:resultS,converted:convertedS,unmatched:unmatchedS};
+    UPD={step:'result',fileName:name,date:new Date().toISOString().split('T')[0],rows:resultD,converted:convertedD,unmatched:unmatchedD};
+    showToast('✅ Loaded Sales (col C) + Day Sales (col D)');
+  }catch(e){alert('Error: '+e.message);}render();
+}
+function handleFileBoth(inp){const f=inp.files[0];if(!f)return;const reader=new FileReader();reader.onload=e=>processExcelBoth(e.target.result,f.name);reader.readAsArrayBuffer(f);}
+function handleDropBoth(e){e.preventDefault();document.getElementById('uz-both')?.classList.remove('drag');const f=e.dataTransfer.files[0];if(!f)return;const reader=new FileReader();reader.onload=ev=>processExcelBoth(ev.target.result,f.name);reader.readAsArrayBuffer(f);}
+
 function processExcel(buf,name){
   try{
     const wb=XLSX.read(buf,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];
@@ -4038,6 +4322,7 @@ function showHdrMenu(){
     +'<div style="height:1px;background:#ECEFF1;margin:4px 0"></div>'
     +`<div style="padding:5px 14px 3px"><div style="font-size:10px;color:#90A4AE">${window.$isAdmin?'👑 Admin':'👁 View Only'}</div><div style="font-size:11px;font-weight:600;color:#1B3A4B;word-break:break-all">${window.$user?.email||'—'}</div></div>`
     +(window.$isAdmin?'<button onclick="showUserMgmt();this.closest(\'#hdr-menu\').remove()" style="width:100%;padding:9px 14px;border:none;background:none;text-align:left;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px"><span>👥</span> User Management</button>':'')
+    +(window.$isAdmin?'<button onclick="publishReport();this.closest(\'#hdr-menu\').remove()" style="width:100%;padding:9px 14px;border:none;background:none;text-align:left;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;color:#1B5E20;font-weight:600"><span>📤</span> Publish Report</button>':'')
     +'<button onclick="_fbSignOut();this.closest(\'#hdr-menu\').remove()" style="width:100%;padding:9px 14px;border:none;background:none;text-align:left;font-size:13px;cursor:pointer;color:#C62828;display:flex;align-items:center;gap:8px"><span>🚪</span> Sign Out</button>'
     +'</div>';
   document.body.appendChild(m);
@@ -4432,6 +4717,7 @@ async function _fbBoot(){
       document.body.prepend(b);
     }
     showToast(window.$isAdmin?'✅ Admin mode':'👁 View-only mode');
+    if(!window.$isAdmin)setTimeout(checkPublished,1500);
   }catch(ex){
     console.error(ex);showToast('⚠️ Load error');
   }
@@ -4460,9 +4746,10 @@ async function _loadAdminData(adminId){
   if(mainSnap.exists()){
     // Firebase has data - load it
     const d=mainSnap.data();
-    if(d.D)D={inventories:[],receivables:[],returns:[],sales:[],daySales:[],stockSummaries:[],waste:[],production:[],...d.D};
+    if(d.D)D={inventories:[],receivables:[],returns:[],sales:[],daySales:[],stockSummaries:[],waste:[],production:[],frozen:[],...d.D};
     if(d.FA)FA=d.FA;if(d.FB)FB=d.FB;
     if(d.PRODUCTS&&d.PRODUCTS.length)PRODUCTS=d.PRODUCTS;
+    if(d.FROZEN_PRODUCTS&&d.FROZEN_PRODUCTS.length)FROZEN_PRODUCTS=d.FROZEN_PRODUCTS;
     if(d.MD)MD=d.MD;if(d.SMD)SMD=d.SMD;
     recompute();
   } else if(window.$isAdmin){
@@ -4498,7 +4785,7 @@ async function _fbSaveNow(){
   const uid=window.$user.uid;
   try{
     await window.$setDoc(window.$doc(window.$db,'users',uid,'data','main'),{
-      D:JSON.parse(JSON.stringify(D)),FA,FB,PRODUCTS,MD,SMD,updatedAt:Date.now()
+      D:JSON.parse(JSON.stringify(D)),FA,FB,PRODUCTS,MD,SMD,FROZEN_PRODUCTS,updatedAt:Date.now()
     });
     await window.$setDoc(window.$doc(window.$db,'users',uid,'data','settings'),{
       NWC_TYPES,RP_DATA,SH_DATA,updatedAt:Date.now()
@@ -4684,7 +4971,7 @@ function onWasteBlurSemi(p,el){
 }
 // ═══ BOOT ════════════════════════════════════════════
 // Load local defaults first
-loadProducts();loadMapping();loadStockMapping();loadSH();loadRP();loadNWCTypes();load();loadFormulas();migrateCompact();
+loadProducts();loadMapping();loadStockMapping();loadSH();loadRP();loadNWCTypes();loadFrozenProducts();load();loadFormulas();migrateCompact();
 checkODCallback();
 // Show login - Firebase onAuthStateChanged handles the rest
 _showLogin();
