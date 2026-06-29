@@ -558,7 +558,7 @@ function render(){
   if(nr2)_navScrollX2=nr2.scrollLeft;
   const{tab,view}=S;
   let h=renderHdr()+renderNav()+'<div class="main">';
-  const entryTabs=['inventory','receivables','returns','waste'];
+  const entryTabs=['inventory','receivables','returns','waste','frozen'];
   if(entryTabs.includes(tab)){
     if(tab==='receivables'&&view==='receipt') h+=renderReceiptCalc();
     else h+=view==='list'?renderList():renderForm();
@@ -2666,7 +2666,13 @@ function delRec(id){if(!confirm('Delete?'))return;D[dk(S.tab)]=D[dk(S.tab)].filt
 function toggleCard(id){S.expanded.has(id)?S.expanded.delete(id):S.expanded.add(id);render();}
 function saveRec(){
   const r=S.record;if(!r.date){alert('Please select a date!');return;}
-  r.items=compactItems(r.items);
+  if(S.tab!=='frozen')r.items=compactItems(r.items);
+  else{
+    // Frozen: compact by removing zero/empty values
+    const c={};
+    Object.entries(r.items||{}).forEach(([k,v])=>{if(parseFloat(v)>0)c[k]=v;});
+    r.items=c;
+  }
   // If receivables with CWC data, recalculate expected from current items
   if(S.tab==='receivables'&&r.cwc&&r.cwc.rows){
     // Recalculate chicken KG from items
@@ -2838,9 +2844,11 @@ function updItem(p,f,el){
 // ─── Publish System ────────────────────────────────
 async function publishReport(){
   if(!window.$isAdmin){showToast('⚠️ Admin only');return;}
-  const date=new Date().toISOString().split('T')[0];
-  const label=`تقرير يوم ${date}`;
-  if(!confirm('نشر '+label+'؟'))return;
+  // Ask for date
+  const date=prompt('تاريخ التقرير:',new Date().toISOString().split('T')[0]);
+  if(!date)return;
+  const label='تم الانتهاء من إضافة بيانات يوم '+date;
+  if(!confirm('نشر: '+label+'؟'))return;
   showToast('📤 Publishing...');
   try{
     await window.$setDoc(window.$doc(window.$db,'published','latest'),{
@@ -2850,9 +2858,18 @@ async function publishReport(){
         receivablesCount:D.receivables.length,
         returnsCount:D.returns.length,
         salesCount:D.sales.length,
+        frozenCount:(D.frozen||[]).length,
       }
     });
-    showToast('✅ تم النشر: '+label);
+    showToast('✅ تم النشر!');
+    // WhatsApp option
+    setTimeout(()=>{
+      if(confirm('إرسال إشعار عبر WhatsApp؟')){
+        const lines=['📊 *IAT Inventory*','✅ '+label,'','📦 Inventory: '+D.inventories.length+' records','📥 Receivables: '+D.receivables.length+' records','📤 Sales: '+D.sales.length+' records','❄️ Frozen: '+(D.frozen||[]).length+' records'];
+        const msg=encodeURIComponent(lines.join('\n'));
+        window.open('https://wa.me/?text='+msg,'_blank');
+      }
+    },500);
   }catch(e){showToast('❌ Error: '+e.message);}
 }
 window.publishReport=publishReport;
@@ -2998,8 +3015,8 @@ function renderFrozenForm(){
       </div>
     </div>
     <div style="background:#E1F5FE;border-radius:8px;padding:8px 12px;margin-bottom:12px;display:flex;gap:16px">
-      <div><span style="font-size:11px;color:#0277BD">Total KG:</span> <strong style="color:${inf.color};font-size:14px">${totalKg.toFixed(2)}</strong></div>
-      <div><span style="font-size:11px;color:#0277BD">Products:</span> <strong style="color:${inf.color}">${prods}</strong></div>
+      <div><span style="font-size:11px;color:#0277BD">Total KG:</span> <strong id="frz-total-kg" style="color:${inf.color};font-size:14px">${totalKg.toFixed(2)}</strong></div>
+      <div><span style="font-size:11px;color:#0277BD">Products:</span> <strong id="frz-total-prods" style="color:${inf.color}">${prods}</strong></div>
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:11px">
       <thead><tr style="background:#263238;color:#fff">
@@ -3012,13 +3029,14 @@ function renderFrozenForm(){
       const qty=parseFloat(r.items?.[p.id])||0;
       const kg=qty*p.kgFactor;
       const hasVal=qty>0;
-      return`<tr style="background:${hasVal?inf.light:i%2===0?'#fff':'#FAFAFA'};border-bottom:1px solid #EFEFEF">
+      return`<tr id="frz-row-${p.id}" style="background:${hasVal?inf.light:i%2===0?'#fff':'#FAFAFA'};border-bottom:1px solid #EFEFEF">
         <td style="padding:3px 6px;font-weight:${hasVal?700:400};color:${hasVal?inf.color:'#455A64'};font-size:10px">${p.name}</td>
         <td style="padding:2px 3px"><input type="text" inputmode="decimal" value="${qty||''}" placeholder="0"
           style="width:100%;text-align:center;border:1.5px solid ${hasVal?'#4FC3F7':'#E0E0E0'};border-radius:5px;font-size:11px;padding:3px;background:${hasVal?'#E1F5FE':'#fff'};font-family:inherit"
-          oninput="if(!S.record.items)S.record.items={};S.record.items[${p.id}]=normalizeNum(this.value);render()" enterkeyhint="next"></td>
+          oninput="if(!S.record.items)S.record.items={};S.record.items[${p.id}]=normalizeNum(this.value);_updateFrozenTotals()" enterkeyhint="next"
+          onblur="if(!S.record.items)S.record.items={};S.record.items[${p.id}]=normalizeNum(this.value);_updateFrozenTotals();saveDraft()"></td>
         <td style="padding:3px 4px;text-align:center;color:#0277BD;font-weight:600">${p.unit}</td>
-        <td style="padding:3px 4px;text-align:center;font-weight:700;color:${hasVal?inf.color:'#CFD8DC'}">${hasVal?kg.toFixed(2):'—'}</td>
+        <td id="frz-kg-${p.id}" style="padding:3px 4px;text-align:center;font-weight:700;color:${hasVal?inf.color:'#CFD8DC'}">${hasVal?kg.toFixed(2):'—'}</td>
       </tr>`;
     }).join('')}
     </tbody></table>
@@ -3054,6 +3072,34 @@ function renderFrozenSettings(){
     </tr>`).join('')}
     </tbody></table>
   </div>`;
+}
+
+function _updateFrozenTotals(){
+  if(!S.record||S.tab!=='frozen')return;
+  const totalKg=FROZEN_PRODUCTS.reduce((s,p)=>{
+    const qty=parseFloat(S.record.items?.[p.id])||0;
+    return s+qty*p.kgFactor;
+  },0);
+  const prods=FROZEN_PRODUCTS.filter(p=>parseFloat(S.record.items?.[p.id])>0).length;
+  const kgEl=document.getElementById('frz-total-kg');
+  const prEl=document.getElementById('frz-total-prods');
+  if(kgEl)kgEl.textContent=totalKg.toFixed(2);
+  if(prEl)prEl.textContent=prods;
+  // Update row highlighting
+  FROZEN_PRODUCTS.forEach(p=>{
+    const qty=parseFloat(S.record.items?.[p.id])||0;
+    const row=document.getElementById('frz-row-'+p.id);
+    if(row){
+      const inf=ti('frozen');
+      row.style.background=qty>0?inf.light:(FROZEN_PRODUCTS.indexOf(p)%2===0?'#fff':'#FAFAFA');
+    }
+    const kgEl2=document.getElementById('frz-kg-'+p.id);
+    if(kgEl2){
+      const kg=qty*p.kgFactor;
+      kgEl2.textContent=qty>0?kg.toFixed(2):'—';
+      kgEl2.style.color=qty>0?ti('frozen').color:'#CFD8DC';
+    }
+  });
 }
 function addFrozenProduct(){
   const name=prompt('Product name:');if(!name)return;
