@@ -2904,46 +2904,53 @@ async function sharePublishWhatsApp(date,label,newRecs){
   try{
     const nr=newRecs||{inventories:[],receivables:[],returns:[],sales:[],frozen:[]};
     const totalNew=(nr.inventories?.length||0)+(nr.receivables?.length||0)+(nr.returns?.length||0)+(nr.sales?.length||0)+(nr.frozen?.length||0);
+    
+    // Build WhatsApp message
     const lines=[];
-    const rows=[];
-    if(nr.inventories?.length)rows.push('📦 Inventory: +'+nr.inventories.length+' records');
-    if(nr.receivables?.length)rows.push('📥 Receivables: +'+nr.receivables.length+' records');
-    if(nr.returns?.length)rows.push('🔄 Returns: +'+nr.returns.length+' records');
-    if(nr.sales?.length)rows.push('📤 Sales: +'+nr.sales.length+' records');
-    if(nr.frozen?.length)rows.push('❄️ Frozen: +'+nr.frozen.length+' records');
-
-    const canvas=document.createElement('canvas');
-    const rowH=50;
-    const h=Math.max(300,120+rows.length*rowH+60);
-    canvas.width=800;canvas.height=h;
-    const ctx=canvas.getContext('2d');
-    ctx.fillStyle='#1B3A4B';ctx.fillRect(0,0,800,h);
-    ctx.fillStyle='#2E7D32';ctx.fillRect(0,0,800,80);
-    ctx.fillStyle='#fff';ctx.font='bold 28px Arial';ctx.fillText('IAT Inventory',30,52);
-    ctx.fillStyle='#A5D6A7';ctx.font='bold 22px Arial';
-    ctx.fillText('✅ '+label,30,115);
+    lines.push('*IAT Trading - Inventory*');
+    lines.push('━━━━━━━━━━━━━━━━━━');
+    lines.push('✅ '+label);
+    lines.push('');
     if(totalNew>0){
-      ctx.fillStyle='#FFF9C4';ctx.font='bold 20px Arial';
-      ctx.fillText('📊 الجديد منذ آخر نشر:',30,155);
-      ctx.fillStyle='#fff';ctx.font='22px Arial';
-      rows.forEach((r,i)=>ctx.fillText(r,50,195+i*rowH));
-    } else {
-      ctx.fillStyle='#90CAF9';ctx.font='20px Arial';
-      ctx.fillText('لا توجد بيانات جديدة',30,160);
-    }
-    ctx.fillStyle='#90CAF9';ctx.font='16px Arial';
-    ctx.fillText('Published: '+new Date().toLocaleString(),30,h-20);
-
-    canvas.toBlob(async blob=>{
-      const file=new File([blob],'report-'+date+'.png',{type:'image/png'});
-      if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-        await navigator.share({files:[file],title:'IAT Report '+date,text:label});
-      } else {
-        const a=document.createElement('a');
-        a.href=URL.createObjectURL(blob);a.download='report-'+date+'.png';a.click();
-        setTimeout(()=>window.open('https://web.whatsapp.com/','_blank'),500);
+      lines.push('*📊 الجديد منذ آخر نشر:*');
+      if(nr.inventories?.length){
+        lines.push('📦 *Inventory:* +'+nr.inventories.length+' records');
+        nr.inventories.forEach(r=>lines.push('   • '+r.date+(r.notes?' - '+r.notes:'')+(r.kg?' ('+r.kg.toFixed(1)+' kg)':'')));
       }
-    },'image/png');
+      if(nr.receivables?.length){
+        lines.push('📥 *Receivables:* +'+nr.receivables.length+' records');
+        nr.receivables.forEach(r=>lines.push('   • '+r.date+(r.supplier?' - '+r.supplier:'')+(r.kg?' ('+parseFloat(r.kg).toFixed(1)+' kg)':'')));
+      }
+      if(nr.returns?.length){
+        lines.push('🔄 *Returns:* +'+nr.returns.length+' records');
+        nr.returns.forEach(r=>lines.push('   • '+r.date+(r.notes?' - '+r.notes:'')+(r.kg?' ('+r.kg.toFixed(1)+' kg)':'')));
+      }
+      if(nr.sales?.length){
+        lines.push('📤 *Sales:* +'+nr.sales.length+' records');
+        nr.sales.forEach(r=>lines.push('   • '+r.date+(r.fileName?' - '+r.fileName:'')));
+      }
+      if(nr.frozen?.length){
+        lines.push('❄️ *Frozen:* +'+nr.frozen.length+' records');
+        nr.frozen.forEach(r=>lines.push('   • '+r.date+(r.notes?' - '+r.notes:'')+(r.kg?' ('+r.kg.toFixed(1)+' kg)':'')));
+      }
+    } else {
+      lines.push('لا توجد بيانات جديدة منذ آخر نشر');
+    }
+    lines.push('');
+    lines.push('━━━━━━━━━━━━━━━━━━');
+    lines.push('🕐 '+new Date().toLocaleString('ar-SA'));
+
+    const msg=lines.join('\n');
+    
+    // Try native share first, fallback to wa.me link
+    if(navigator.share){
+      try{
+        await navigator.share({title:'IAT Report '+date,text:msg});
+        return;
+      }catch(e){if(e.name==='AbortError')return;}
+    }
+    // Fallback: open WhatsApp with pre-filled message
+    window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
   }catch(e){showToast('Share error: '+e.message);}
 }
 async function checkPublished(){
