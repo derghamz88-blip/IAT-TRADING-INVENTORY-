@@ -2844,36 +2844,108 @@ function updItem(p,f,el){
 // ─── Publish System ────────────────────────────────
 async function publishReport(){
   if(!window.$isAdmin){showToast('⚠️ Admin only');return;}
-  // Ask for date
   const date=prompt('تاريخ التقرير:',new Date().toISOString().split('T')[0]);
   if(!date)return;
   const label='تم الانتهاء من إضافة بيانات يوم '+date;
   if(!confirm('نشر: '+label+'؟'))return;
   showToast('📤 Publishing...');
   try{
-    await window.$setDoc(window.$doc(window.$db,'published','latest'),{
+    const db=window.$db;
+    // Load previous snapshot to calculate diff
+    const prevSnap=await window.$getDoc(window.$doc(db,'published','latest'));
+    const prevIDs={
+      inventories:new Set((prevSnap.exists()&&prevSnap.data().snapshot?.inventoryIDs)||[]),
+      receivables:new Set((prevSnap.exists()&&prevSnap.data().snapshot?.receivableIDs)||[]),
+      returns:new Set((prevSnap.exists()&&prevSnap.data().snapshot?.returnIDs)||[]),
+      sales:new Set((prevSnap.exists()&&prevSnap.data().snapshot?.salesIDs)||[]),
+      frozen:new Set((prevSnap.exists()&&prevSnap.data().snapshot?.frozenIDs)||[]),
+    };
+    // Calculate new records since last publish
+    const newRecs={
+      inventories:D.inventories.filter(r=>!prevIDs.inventories.has(r.id)),
+      receivables:D.receivables.filter(r=>!prevIDs.receivables.has(r.id)),
+      returns:D.returns.filter(r=>!prevIDs.returns.has(r.id)),
+      sales:D.sales.filter(r=>!prevIDs.sales.has(r.id)),
+      frozen:(D.frozen||[]).filter(r=>!prevIDs.frozen.has(r.id)),
+    };
+    // Save publish with snapshot of current IDs + new records
+    await window.$setDoc(window.$doc(db,'published','latest'),{
       date,label,publishedAt:Date.now(),publishedBy:window.$user.email,
-      summary:{
-        inventoryCount:D.inventories.length,
-        receivablesCount:D.receivables.length,
-        returnsCount:D.returns.length,
-        salesCount:D.sales.length,
-        frozenCount:(D.frozen||[]).length,
+      snapshot:{
+        inventoryIDs:D.inventories.map(r=>r.id),
+        receivableIDs:D.receivables.map(r=>r.id),
+        returnIDs:D.returns.map(r=>r.id),
+        salesIDs:D.sales.map(r=>r.id),
+        frozenIDs:(D.frozen||[]).map(r=>r.id),
+      },
+      newRecords:{
+        inventories:newRecs.inventories.map(r=>({id:r.id,date:r.date,notes:r.notes,kg:Object.values(r.items||{}).reduce((s,v)=>(s+(parseFloat(v.kg)||0)+(parseFloat(v.pcs)||0)*0.5),0)})),
+        receivables:newRecs.receivables.map(r=>({id:r.id,date:r.date,supplier:r.supplier||'',kg:r.grand||0})),
+        returns:newRecs.returns.map(r=>({id:r.id,date:r.date,notes:r.notes||'',kg:Object.values(r.items||{}).reduce((s,v)=>(s+(parseFloat(v.kg)||0)+(parseFloat(v.pcs)||0)*0.5),0)})),
+        sales:newRecs.sales.map(r=>({id:r.id,date:r.date,fileName:r.fileName||''})),
+        frozen:newRecs.frozen.map(r=>({id:r.id,date:r.date,notes:r.notes||'',kg:FROZEN_PRODUCTS.reduce((s,p)=>s+(parseFloat(r.items?.[p.id])||0)*p.kgFactor,0)})),
+      },
+      counts:{
+        newInventory:newRecs.inventories.length,
+        newReceivables:newRecs.receivables.length,
+        newReturns:newRecs.returns.length,
+        newSales:newRecs.sales.length,
+        newFrozen:newRecs.frozen.length,
       }
     });
     showToast('✅ تم النشر!');
-    // WhatsApp option
-    setTimeout(()=>{
-      if(confirm('إرسال إشعار عبر WhatsApp؟')){
-        const lines=['📊 *IAT Inventory*','✅ '+label,'','📦 Inventory: '+D.inventories.length+' records','📥 Receivables: '+D.receivables.length+' records','📤 Sales: '+D.sales.length+' records','❄️ Frozen: '+(D.frozen||[]).length+' records'];
-        const msg=encodeURIComponent(lines.join('\n'));
-        window.open('https://wa.me/?text='+msg,'_blank');
-      }
-    },500);
+    setTimeout(()=>sharePublishWhatsApp(date,label,newRecs),500);
   }catch(e){showToast('❌ Error: '+e.message);}
 }
 window.publishReport=publishReport;
 
+
+async function sharePublishWhatsApp(date,label,newRecs){
+  try{
+    const nr=newRecs||{inventories:[],receivables:[],returns:[],sales:[],frozen:[]};
+    const totalNew=(nr.inventories?.length||0)+(nr.receivables?.length||0)+(nr.returns?.length||0)+(nr.sales?.length||0)+(nr.frozen?.length||0);
+    const lines=[];
+    const rows=[];
+    if(nr.inventories?.length)rows.push('📦 Inventory: +'+nr.inventories.length+' records');
+    if(nr.receivables?.length)rows.push('📥 Receivables: +'+nr.receivables.length+' records');
+    if(nr.returns?.length)rows.push('🔄 Returns: +'+nr.returns.length+' records');
+    if(nr.sales?.length)rows.push('📤 Sales: +'+nr.sales.length+' records');
+    if(nr.frozen?.length)rows.push('❄️ Frozen: +'+nr.frozen.length+' records');
+
+    const canvas=document.createElement('canvas');
+    const rowH=50;
+    const h=Math.max(300,120+rows.length*rowH+60);
+    canvas.width=800;canvas.height=h;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='#1B3A4B';ctx.fillRect(0,0,800,h);
+    ctx.fillStyle='#2E7D32';ctx.fillRect(0,0,800,80);
+    ctx.fillStyle='#fff';ctx.font='bold 28px Arial';ctx.fillText('IAT Inventory',30,52);
+    ctx.fillStyle='#A5D6A7';ctx.font='bold 22px Arial';
+    ctx.fillText('✅ '+label,30,115);
+    if(totalNew>0){
+      ctx.fillStyle='#FFF9C4';ctx.font='bold 20px Arial';
+      ctx.fillText('📊 الجديد منذ آخر نشر:',30,155);
+      ctx.fillStyle='#fff';ctx.font='22px Arial';
+      rows.forEach((r,i)=>ctx.fillText(r,50,195+i*rowH));
+    } else {
+      ctx.fillStyle='#90CAF9';ctx.font='20px Arial';
+      ctx.fillText('لا توجد بيانات جديدة',30,160);
+    }
+    ctx.fillStyle='#90CAF9';ctx.font='16px Arial';
+    ctx.fillText('Published: '+new Date().toLocaleString(),30,h-20);
+
+    canvas.toBlob(async blob=>{
+      const file=new File([blob],'report-'+date+'.png',{type:'image/png'});
+      if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:'IAT Report '+date,text:label});
+      } else {
+        const a=document.createElement('a');
+        a.href=URL.createObjectURL(blob);a.download='report-'+date+'.png';a.click();
+        setTimeout(()=>window.open('https://web.whatsapp.com/','_blank'),500);
+      }
+    },'image/png');
+  }catch(e){showToast('Share error: '+e.message);}
+}
 async function checkPublished(){
   if(!window.$db||window.$isAdmin)return;
   try{
@@ -2886,10 +2958,18 @@ async function checkPublished(){
     const b=document.createElement('div');
     b.id='pub-banner';
     b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9997;background:linear-gradient(90deg,#1B5E20,#2E7D32);color:#fff;padding:8px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.3)';
+    const counts=pub.counts||{};
+    const newTotal=(counts.newInventory||0)+(counts.newReceivables||0)+(counts.newReturns||0)+(counts.newSales||0)+(counts.newFrozen||0);
+    const newSummary=[];
+    if(counts.newInventory)newSummary.push('📦 +'+counts.newInventory+' Inv');
+    if(counts.newReceivables)newSummary.push('📥 +'+counts.newReceivables+' Rec');
+    if(counts.newReturns)newSummary.push('🔄 +'+counts.newReturns+' Ret');
+    if(counts.newSales)newSummary.push('📤 +'+counts.newSales+' Sales');
+    if(counts.newFrozen)newSummary.push('❄️ +'+counts.newFrozen+' Frz');
     b.innerHTML=`<span style="font-size:18px">📊</span>
       <div style="flex:1">
         <div style="font-size:12px;font-weight:700">${pub.label} — جاهز!</div>
-        <div style="font-size:10px;opacity:.85">نُشر بواسطة ${pub.publishedBy}</div>
+        <div style="font-size:10px;opacity:.85">${newTotal>0?'الجديد: '+newSummary.join(' · '):'لا توجد بيانات جديدة'}</div>
       </div>
       <button onclick="document.getElementById('pub-banner').remove()" style="border:none;background:rgba(255,255,255,.2);color:#fff;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer">✕</button>`;
     document.body.prepend(b);
