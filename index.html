@@ -4513,6 +4513,8 @@ async function odLogin(action){
 }
 
 async function checkODCallback(){
+  // Prevent duplicate execution (e.g. Firebase causing re-render/re-call)
+  if(window._odCallbackRunning)return;
   // SPA apps return code in fragment (#code=XXX)
   const hash=window.location.hash;
   const hs=new URLSearchParams(hash.startsWith('#')?hash.slice(1):hash);
@@ -4529,6 +4531,9 @@ async function checkODCallback(){
   }
   if(!code)return;
 
+  window._odCallbackRunning=true;
+  // Save verifier BEFORE clearing URL (in case of race condition)
+  const savedVerifier=localStorage.getItem('od-v')||'';
   // Clear URL
   window.history.replaceState({},'',window.location.pathname);
   // State check skipped - multiple login attempts can cause mismatch
@@ -4541,7 +4546,7 @@ async function checkODCallback(){
       body:new URLSearchParams({
         client_id:OD_CLIENT_ID,grant_type:'authorization_code',
         code,redirect_uri:OD_REDIRECT,
-        code_verifier:localStorage.getItem('od-v')||''
+        code_verifier:savedVerifier
       }).toString()
     });
     const t=await r.json();
@@ -4560,6 +4565,8 @@ async function checkODCallback(){
     else alert('✅ Logged in! Now press ☁️ to save.');
   }catch(e){
     alert('❌ Network error:\n'+e.message);
+  }finally{
+    window._odCallbackRunning=false;
   }
 }
 
