@@ -4470,7 +4470,7 @@ function saveAndOpenOneDrive(){
   },800);
 }
 function exportData(){
-  const data={version:3,exportDate:new Date().toISOString(),PRODUCTS,MD,SMD,SH_DATA,D,FA,FB};
+  const data={version:4,exportDate:new Date().toISOString(),PRODUCTS,MD,SMD,SH_DATA,D,FA,FB,FROZEN_PRODUCTS,NWC_TYPES,RP_DATA};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const fname='chicken-inventory-'+new Date().toISOString().split('T')[0]+'.json';
@@ -4629,13 +4629,18 @@ function applyBackup(data){
   if(data.MD){MD=data.MD;saveMapping();}
   if(data.SMD){SMD=data.SMD;saveStockMapping();}
   if(data.SH_DATA){SH_DATA=data.SH_DATA;saveSH();}
-  if(data.D){D={inventories:[],receivables:[],returns:[],sales:[],daySales:[],stockSummaries:[],waste:[],production:[],...data.D};save();}
+  if(data.D){D={inventories:[],receivables:[],returns:[],sales:[],daySales:[],stockSummaries:[],waste:[],production:[],frozen:[],...data.D};
+    if(!D.frozen)D.frozen=[]; // ensure frozen exists even from old backups
+    save();}
+  if(data.FROZEN_PRODUCTS&&data.FROZEN_PRODUCTS.length){FROZEN_PRODUCTS=data.FROZEN_PRODUCTS;saveFrozenProducts();}
+  if(data.NWC_TYPES&&data.NWC_TYPES.length){NWC_TYPES=data.NWC_TYPES;saveNWCTypes();}
+  if(data.RP_DATA){RP_DATA=data.RP_DATA;saveRP();}
   FA=data.FA||[];FB=data.FB||[];
   saveFormulas();recompute();render();
 }
 
 function getBackupData(){
-  return JSON.stringify({version:3,exportDate:new Date().toISOString(),PRODUCTS,MD,SMD,SH_DATA,D,FA,FB},null,2);
+  return JSON.stringify({version:4,exportDate:new Date().toISOString(),PRODUCTS,MD,SMD,SH_DATA,D,FA,FB,FROZEN_PRODUCTS,NWC_TYPES,RP_DATA},null,2);
 }
 function getODUser(){return'';}
 
