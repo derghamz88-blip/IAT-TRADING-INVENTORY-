@@ -631,6 +631,7 @@ function renderHdr(){
     <div style="display:flex;gap:2px;margin-left:6px;align-items:center">
       <button onclick="odSaveClick()" title="Save to OneDrive" style="padding:7px 11px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:7px;color:#fff;cursor:pointer;font-size:18px;line-height:1">☁️</button>
       <button onclick="odDebug()" title="OneDrive debug" style="padding:7px 11px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:7px;color:#fff;cursor:pointer;font-size:14px;line-height:1">🔍</button>
+      <button onclick="odForceReset()" title="Reset OneDrive connection" style="padding:7px 11px;background:rgba(255,100,100,.2);border:1px solid rgba(255,100,100,.4);border-radius:7px;color:#fff;cursor:pointer;font-size:14px;line-height:1">🔄</button>
       <label title="Restore from file" style="padding:7px 11px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:7px;color:#fff;cursor:pointer;font-size:18px;line-height:1">
         📂<input type="file" accept=".json,.txt" onchange="odLoadFile(this)" style="display:none">
       </label>
@@ -4571,6 +4572,17 @@ async function checkODCallback(){
 }
 
 // Debug helper — shows what's in URL + localStorage
+function odForceReset(){
+  if(!confirm('Reset OneDrive connection?\nYou will need to log in again.'))return;
+  localStorage.removeItem('od-at');
+  localStorage.removeItem('od-ate');
+  localStorage.removeItem('od-rt');
+  localStorage.removeItem('od-v');
+  localStorage.removeItem('od-s');
+  localStorage.removeItem('od-p');
+  showToast('🔄 OneDrive reset! Press ☁️ to login again');
+}
+window.odForceReset=odForceReset;
 function odDebug(){
   const s=window.location.search;
   const h=window.location.hash;
