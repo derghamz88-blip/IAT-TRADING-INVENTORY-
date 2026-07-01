@@ -2665,8 +2665,10 @@ function editRec(id){
     }
     S.view='receipt';render();return;
   }
-  S.record={...JSON.parse(JSON.stringify(r)),items:expandItems(r.items)};
-  S._prodNWC={}; // reset so modal reloads from record._nwc
+  // Frozen: keep items as-is (numeric values), others: expand
+  const recItems=S.tab==='frozen'?{...(r.items||{})}:expandItems(r.items);
+  S.record={...JSON.parse(JSON.stringify(r)),items:recItems};
+  S._prodNWC={};
   S.view='form';render();
 }
 function delRec(id){if(!confirm('Delete?'))return;D[dk(S.tab)]=D[dk(S.tab)].filter(r=>r.id!==id);save();render();}
@@ -3030,6 +3032,35 @@ function renderFrozenTab(){
   return h;
 }
 
+function shareFrozenWA(r){
+  const rows=FROZEN_PRODUCTS.filter(p=>parseFloat(r.items?.[p.id])>0);
+  const totalKg=rows.reduce((s,p)=>s+(parseFloat(r.items?.[p.id])||0)*p.kgFactor,0);
+  const lines=['*❄️ IAT Frozen Inventory*','Date: '+r.date,'Total: '+totalKg.toFixed(2)+' KG',''];
+  rows.forEach(p=>{const qty=parseFloat(r.items?.[p.id])||0;lines.push('• '+p.name+': '+qty+' '+p.unit+' ('+( qty*p.kgFactor).toFixed(2)+' kg)');});
+  if(navigator.share){navigator.share({title:'Frozen '+r.date,text:lines.join('\n')});}
+  else{window.open('https://wa.me/?text='+encodeURIComponent(lines.join('\n')),'_blank');}
+}
+async function shareFrozenPDF(r){
+  const rows=FROZEN_PRODUCTS.filter(p=>parseFloat(r.items?.[p.id])>0);
+  const totalKg=rows.reduce((s,p)=>s+(parseFloat(r.items?.[p.id])||0)*p.kgFactor,0);
+  const {jsPDF}=window.jspdf;const doc=new jsPDF();
+  doc.setFontSize(16);doc.setTextColor(2,119,189);doc.text('IAT Frozen Inventory',14,18);
+  doc.setFontSize(11);doc.setTextColor(0,0,0);
+  doc.text('Date: '+r.date,14,28);doc.text('Total: '+totalKg.toFixed(2)+' KG',14,35);
+  let y=45;
+  doc.setFillColor(2,119,189);doc.rect(14,y,182,7,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(9);
+  doc.text('Product',16,y+5);doc.text('Qty',110,y+5);doc.text('Unit',135,y+5);doc.text('KG',165,y+5);
+  y+=10;doc.setTextColor(0,0,0);
+  rows.forEach((p,i)=>{
+    if(i%2===0){doc.setFillColor(241,248,233);doc.rect(14,y-4,182,7,'F');}
+    doc.text(p.name.substring(0,40),16,y);
+    const qty=parseFloat(r.items?.[p.id])||0;
+    doc.text(String(qty),110,y);doc.text(p.unit,135,y);doc.text((qty*p.kgFactor).toFixed(2),165,y);
+    y+=8;
+  });
+  doc.save('frozen-'+r.date+'.pdf');
+}
 function renderFrozenCard(r,inf){
   const totalKg=FROZEN_PRODUCTS.reduce((s,p)=>{
     const qty=parseFloat(r.items?.[p.id])||0;
@@ -3053,6 +3084,10 @@ function renderFrozenCard(r,inf){
         <button onclick="delRec('${r.id}')" style="border:none;background:#FFEBEE;color:#C62828;border-radius:7px;width:32px;height:32px;cursor:pointer;font-size:14px">♻️</button>
       </div>
     </div>
+    ${exp?`<div style="display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid ${inf.border}">
+      <button onclick="shareFrozenWA(${JSON.stringify(r).replace(/"/g,'&quot;')})" style="flex:1;padding:7px;border:none;background:#25D366;color:#fff;border-radius:8px;font-size:12px;cursor:pointer">💬 WhatsApp</button>
+      <button onclick="shareFrozenPDF(${JSON.stringify(r).replace(/"/g,'&quot;')})" style="flex:1;padding:7px;border:none;background:#E53935;color:#fff;border-radius:8px;font-size:12px;cursor:pointer">📄 PDF</button>
+    </div>`:''}
     ${exp?renderFrozenCardDetail(r,inf):''}
   </div>`;
 }
