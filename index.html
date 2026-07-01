@@ -558,12 +558,12 @@ function render(){
   if(nr2)_navScrollX2=nr2.scrollLeft;
   const{tab,view}=S;
   let h=renderHdr()+renderNav()+'<div class="main">';
-  const entryTabs=['inventory','receivables','returns','waste','frozen'];
+  const entryTabs=['inventory','receivables','returns','waste'];
   if(entryTabs.includes(tab)){
     if(tab==='receivables'&&view==='receipt') h+=renderReceiptCalc();
     else h+=view==='list'?renderList():renderForm();
   }
-  else if(tab==='frozen')       h+=renderFrozenTab();
+  else if(tab==='frozen')       h+=view==='form'?renderFrozenForm():renderFrozenTab();
   else if(tab==='sales')        h+=view==='form'?renderForm():renderSalesTab();
   else if(tab==='daysales')     h+=view==='form'?renderForm():renderDaySalesTab();
   else if(tab==='stocksummary') h+=view==='form'?renderForm():renderStockTab();
@@ -2627,9 +2627,15 @@ function switchTab(t){
 function formatDateShort(d){const[y,m,day]=d.split('-');return`${day}/${m}/${y}`;}
 
 function startNew(){
-  const r=newRec();
-  const inf=ti(S.tab);
-  r.notes=inf.ar;
+  let r;
+  if(S.tab==='frozen'){
+    // Frozen uses its own empty items (just numeric values by product ID)
+    r={id:gid(),date:new Date().toISOString().split('T')[0],notes:'',items:{}};
+  } else {
+    r=newRec();
+    const inf=ti(S.tab);
+    r.notes=inf.ar;
+  }
   S._prodNWC={};
   S.record=r;S.view='form';render();
 }
@@ -4501,6 +4507,8 @@ function odGetToken(){
 }
 
 async function odLogin(action){
+  // Clear any stale verifier/state from previous incomplete login attempts
+  localStorage.removeItem('od-v');localStorage.removeItem('od-s');localStorage.removeItem('od-p');
   const v=odRandStr(64),s=odRandStr(16);
   const ch=await odChallenge(v);
   localStorage.setItem('od-v',v);localStorage.setItem('od-s',s);localStorage.setItem('od-p',action);
