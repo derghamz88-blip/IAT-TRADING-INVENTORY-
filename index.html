@@ -2276,7 +2276,7 @@ function renderSettings(){
       <button class="stb${S.stab==='api'?' on':''}" onclick="S.stab='api';render()">🔑 API Key</button>
     </div>
   </div>
-  ${S.stab==='products'?renderSettingsProds():S.stab==='mapping'?renderSettingsMap():S.stab==='stockmap'?renderSettingsStockMap():S.stab==='sh'?renderSettingsSH():S.stab==='rp'?renderSettingsRP():S.stab==='nwctypes'?renderSettingsNWC():renderSettingsAPI()}`;
+  ${S.stab==='products'?renderSettingsProds():S.stab==='mapping'?renderSettingsMap():S.stab==='stockmap'?renderSettingsStockMap():S.stab==='sh'?renderSettingsSH():S.stab==='rp'?renderSettingsRP():S.stab==='nwctypes'?renderSettingsNWC():S.stab==='frozen'?renderFrozenSettings():renderSettingsAPI()}`;
 }
 function renderSettingsNWC(){
   const editable=NWC_TYPES.filter(t=>t.key!=='custom');
