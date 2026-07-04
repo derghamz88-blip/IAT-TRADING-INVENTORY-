@@ -570,8 +570,7 @@ function render(){
   }
   else if(tab==='frozen')       h+=view==='form'?renderFrozenForm():renderFrozenTab();
   else if(tab==='orders')       h+=renderOrdersTab();
-  else if(tab==='sales')        h+=view==='form'?renderForm():renderSalesTab();
-  else if(tab==='daysales')     h+=view==='form'?renderForm():renderDaySalesTab();
+  else if(tab==='sales')        h+=view==='form'?renderForm():renderSalesTab();  else if(tab==='daysales')     h+=view==='form'?renderForm():renderDaySalesTab();
   else if(tab==='stocksummary') h+=view==='form'?renderForm():renderStockTab();
   else if(tab==='production')   h+=view==='form'?renderProductionForm():renderProductionList();
   else if(tab==='records')      h+=renderRecords();
@@ -672,6 +671,7 @@ function renderNav(){
 // ─── List / Card / Form ───────────────────────────
 function renderList(){
   const inf=ti(S.tab),key=dk(S.tab);
+  if(S.tab==='orders') return renderOrdersTab();
   let recs=[...D[key]].sort((a,b)=>b.date.localeCompare(a.date));
   // Apply global date filter
   const from=S.gFrom,to=S.gTo;
