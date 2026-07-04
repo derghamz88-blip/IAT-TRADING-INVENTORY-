@@ -637,6 +637,10 @@ function renderHdr(){
       </label>
       <input id="od-load-input" type="file" accept=".json,.txt" onchange="odLoadFile(this)" style="display:none">
       <button onclick="showNetCalc()" title="Net Weight Calculator" style="padding:7px 11px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:7px;color:#fff;cursor:pointer;font-size:18px;line-height:1">⚖️</button>
+      ${window.$isAdmin?`
+      <button onclick="savePublishSnap()" title="حفظ نقطة البداية" style="padding:7px 11px;background:rgba(100,200,100,.25);border:1px solid rgba(100,200,100,.5);border-radius:7px;color:#fff;cursor:pointer;font-size:16px;line-height:1">💾</button>
+      <button onclick="publishReport()" title="إرسال التغييرات على WhatsApp" style="padding:7px 11px;background:rgba(37,211,102,.25);border:1px solid rgba(37,211,102,.5);border-radius:7px;color:#fff;cursor:pointer;font-size:16px;line-height:1">📤</button>
+      `:''}
       <button onclick="showHdrMenu()" title="More" style="padding:7px 11px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:7px;color:#fff;cursor:pointer;font-size:20px;line-height:1">⋮</button>
     </div>
   </header>`;
@@ -2870,14 +2874,28 @@ function updItem(p,f,el){
 
 
 // ─── Publish System ────────────────────────────────
-async function publishReport(){
-  if(!window.$isAdmin){showToast('⚠️ Admin only');return;}
+// Save snapshot button
+function savePublishSnap(){
+  if(!window.$isAdmin){showToast('Admin only');return;}
+  const snap={
+    inventoryIDs:D.inventories.map(r=>r.id),
+    receivableIDs:D.receivables.map(r=>r.id),
+    returnIDs:D.returns.map(r=>r.id),
+    salesIDs:D.sales.map(r=>r.id),
+    frozenIDs:(D.frozen||[]).map(r=>r.id),
+    takenAt:Date.now(),
+  };
+  try{localStorage.setItem('chk-pub-snap',JSON.stringify(snap));}catch(e){}
+  const t=new Date(snap.takenAt).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
+  showToast('\u{1F4CC} Snapshot saved — '+t);
+}
+window.savePublishSnap=savePublishSnap;
 
-  // Load previous snapshot from localStorage
+// Publish = diff since last snapshot, send WhatsApp
+async function publishReport(){
+  if(!window.$isAdmin){showToast('Admin only');return;}
   let prevSnap=null;
   try{const s=localStorage.getItem('chk-pub-snap');if(s)prevSnap=JSON.parse(s);}catch(e){}
-
-  // Calculate diff: current vs last press
   const prevIDs={
     inventories:new Set((prevSnap&&prevSnap.inventoryIDs)||[]),
     receivables:new Set((prevSnap&&prevSnap.receivableIDs)||[]),
@@ -2895,32 +2913,13 @@ async function publishReport(){
   const totalNew=newRecs.inventories.length+newRecs.receivables.length+newRecs.returns.length+newRecs.sales.length+newRecs.frozen.length;
   const date=new Date().toISOString().split('T')[0];
   const nowTime=new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
-  const prevTime=prevSnap?new Date(prevSnap.takenAt).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'}):'البداية';
-  const label='تحديثات '+prevTime+' → '+nowTime+' ('+totalNew+' سجل جديد)';
-
-  // Save new snapshot NOW (this press becomes the new baseline)
-  const newSnap={
-    inventoryIDs:D.inventories.map(r=>r.id),
-    receivableIDs:D.receivables.map(r=>r.id),
-    returnIDs:D.returns.map(r=>r.id),
-    salesIDs:D.sales.map(r=>r.id),
-    frozenIDs:(D.frozen||[]).map(r=>r.id),
-    takenAt:Date.now(),
-  };
-  try{localStorage.setItem('chk-pub-snap',JSON.stringify(newSnap));}catch(e){}
-
-  // Save to Firebase
+  const prevTime=prevSnap?new Date(prevSnap.takenAt).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'}):'Start';
+  const label='Updates '+prevTime+' → '+nowTime+' ('+totalNew+' new)';
   try{
     const db=window.$db;
     await window.$setDoc(window.$doc(db,'published','latest'),{
       date,label,publishedAt:Date.now(),publishedBy:window.$user?.email||'',
-      snapshot:{
-        inventoryIDs:newSnap.inventoryIDs,
-        receivableIDs:newSnap.receivableIDs,
-        returnIDs:newSnap.returnIDs,
-        salesIDs:newSnap.salesIDs,
-        frozenIDs:newSnap.frozenIDs,
-      },
+      snapshot:{inventoryIDs:D.inventories.map(r=>r.id),receivableIDs:D.receivables.map(r=>r.id),returnIDs:D.returns.map(r=>r.id),salesIDs:D.sales.map(r=>r.id),frozenIDs:(D.frozen||[]).map(r=>r.id)},
       newRecords:{
         inventories:newRecs.inventories.map(r=>({id:r.id,date:r.date,notes:r.notes||'',kg:Object.values(r.items||{}).reduce((s,v)=>(s+(parseFloat(v.kg)||0)+(parseFloat(v.pcs)||0)*0.5),0)})),
         receivables:newRecs.receivables.map(r=>({id:r.id,date:r.date,supplier:r.supplier||'',kg:r.grand||0})),
@@ -2931,8 +2930,7 @@ async function publishReport(){
       counts:{newInventory:newRecs.inventories.length,newReceivables:newRecs.receivables.length,newReturns:newRecs.returns.length,newSales:newRecs.sales.length,newFrozen:newRecs.frozen.length}
     });
   }catch(e){console.warn('Firebase publish error:',e);}
-
-  showToast('✅ تم النشر!');
+  showToast('Published!');
   setTimeout(()=>sharePublishWhatsApp(date,label,newRecs),300);
 }
 window.publishReport=publishReport;
