@@ -630,12 +630,7 @@ function renderHdr(){
     </div>
     <div style="display:flex;gap:2px;margin-left:6px;align-items:center">
       <button onclick="odSaveClick()" title="Save to OneDrive" style="padding:7px 11px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:7px;color:#fff;cursor:pointer;font-size:18px;line-height:1">☁️</button>
-      <button onclick="odDebug()" title="OneDrive debug" style="padding:7px 11px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:7px;color:#fff;cursor:pointer;font-size:14px;line-height:1">🔍</button>
-      <button onclick="odForceReset()" title="Reset OneDrive connection" style="padding:7px 11px;background:rgba(255,100,100,.2);border:1px solid rgba(255,100,100,.4);border-radius:7px;color:#fff;cursor:pointer;font-size:14px;line-height:1">🔄</button>
-      <label title="Restore from file" style="padding:7px 11px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:7px;color:#fff;cursor:pointer;font-size:18px;line-height:1">
-        📂<input type="file" accept=".json,.txt" onchange="odLoadFile(this)" style="display:none">
-      </label>
-      <input id="od-load-input" type="file" accept=".json,.txt" onchange="odLoadFile(this)" style="display:none">
+      <button onclick="odForceReset()" title="Reset OneDrive" style="padding:7px 11px;background:rgba(255,100,100,.2);border:1px solid rgba(255,100,100,.4);border-radius:7px;color:#fff;cursor:pointer;font-size:14px;line-height:1">🔄</button>
       <button onclick="showNetCalc()" title="Net Weight Calculator" style="padding:7px 11px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:7px;color:#fff;cursor:pointer;font-size:18px;line-height:1">⚖️</button>
       ${window.$isAdmin?`
       <button onclick="savePublishSnap()" title="حفظ نقطة البداية" style="padding:7px 11px;background:rgba(100,200,100,.25);border:1px solid rgba(100,200,100,.5);border-radius:7px;color:#fff;cursor:pointer;font-size:16px;line-height:1">💾</button>
