@@ -2349,6 +2349,17 @@ function renderSettingsProds(){
     </div>
   </div></div>`;return h;
 }
+function _renderExcelNamesList(){
+  let excelNames=[];
+  try{const s=localStorage.getItem('chk-last-excel-names');if(s)excelNames=JSON.parse(s);}catch(e){}
+  const unmapped=excelNames.filter(n=>!MD.some(m=>m.n===n));
+  if(!unmapped.length)return '';
+  const btns=unmapped.map(n=>{
+    const safe=n.replace(/"/g,'&quot;');
+    return '<button onclick="document.getElementById(\'mn-n\').value=&quot;'+safe+'&quot;" style="background:#E3F2FD;color:#1565C0;border:1px solid #BBDEFB;border-radius:5px;padding:2px 7px;font-size:10px;cursor:pointer">'+n+'</button>';
+  }).join('');
+  return '<div style="margin-bottom:8px"><div style="font-size:9px;color:#90A4AE;margin-bottom:3px">&#128203; From last Excel ('+unmapped.length+' unmapped):</div><div style="display:flex;flex-wrap:wrap;gap:4px;max-height:100px;overflow-y:auto">'+btns+'</div></div>';
+}
 function renderSettingsMap(){
   const srch=(S.mapSearch||'').toLowerCase();
   const maps=MD.filter(m=>!srch||m.n.toLowerCase().includes(srch)||m.p.toLowerCase().includes(srch));
@@ -2386,6 +2397,7 @@ function renderSettingsMap(){
   if(!maps.length)h+=`<tr><td colspan="5" style="text-align:center;padding:16px;color:#90A4AE">No mappings found</td></tr>`;
   h+=`</tbody></table></div>
   <div style="font-size:11px;color:#546E7A;margin-bottom:6px;font-weight:600">+ Add New</div>
+  ${_renderExcelNamesList()}
   <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:flex-end">
     <div style="flex:2;min-width:130px"><div style="font-size:9px;color:#90A4AE;margin-bottom:2px">Sales Name</div>
       <input class="fi" id="mn-n" type="text" placeholder="Sales product name" style="width:100%;font-size:11px"></div>
@@ -2668,7 +2680,14 @@ function editRec(id){
   // Frozen: keep items as-is (numeric values), others: expand
   const recItems=S.tab==='frozen'?{...(r.items||{})}:expandItems(r.items);
   S.record={...JSON.parse(JSON.stringify(r)),items:recItems};
+  // Restore NWC rows from saved _nwc in record
   S._prodNWC={};
+  if(r._nwc){
+    Object.entries(r._nwc).forEach(([prod,rows])=>{
+      if(Array.isArray(rows)&&rows.length)
+        S._prodNWC[prod]=rows.map((row,i)=>({id:i+1,count:row.count||'',type:row.type||'salle',gross:row.gross||'',cwt:row.cwt||''}));
+    });
+  }
   S.view='form';render();
 }
 function delRec(id){if(!confirm('Delete?'))return;D[dk(S.tab)]=D[dk(S.tab)].filter(r=>r.id!==id);save();render();}
@@ -3477,6 +3496,9 @@ function processExcelBoth(buf,name){
     }
     UP={step:'result',fileName:name,date:new Date().toISOString().split('T')[0],rows:resultS,converted:convertedS,unmatched:unmatchedS};
     UPD={step:'result',fileName:name,date:new Date().toISOString().split('T')[0],rows:resultD,converted:convertedD,unmatched:unmatchedD};
+    // Save all Excel names for Sales Map reference
+    const allNames=[...new Set(resultS.map(r=>r.name).filter(n=>n))];
+    try{localStorage.setItem('chk-last-excel-names',JSON.stringify(allNames));}catch(e){}
     showToast('✅ Loaded Sales (col C) + Day Sales (col D)');
   }catch(e){alert('Error: '+e.message);}render();
 }
