@@ -2872,58 +2872,68 @@ function updItem(p,f,el){
 // ─── Publish System ────────────────────────────────
 async function publishReport(){
   if(!window.$isAdmin){showToast('⚠️ Admin only');return;}
-  const date=prompt('تاريخ التقرير:',new Date().toISOString().split('T')[0]);
-  if(!date)return;
-  const label='تم الانتهاء من إضافة بيانات يوم '+date;
-  if(!confirm('نشر: '+label+'؟'))return;
-  showToast('📤 Publishing...');
+
+  // Load previous snapshot from localStorage
+  let prevSnap=null;
+  try{const s=localStorage.getItem('chk-pub-snap');if(s)prevSnap=JSON.parse(s);}catch(e){}
+
+  // Calculate diff: current vs last press
+  const prevIDs={
+    inventories:new Set((prevSnap&&prevSnap.inventoryIDs)||[]),
+    receivables:new Set((prevSnap&&prevSnap.receivableIDs)||[]),
+    returns:new Set((prevSnap&&prevSnap.returnIDs)||[]),
+    sales:new Set((prevSnap&&prevSnap.salesIDs)||[]),
+    frozen:new Set((prevSnap&&prevSnap.frozenIDs)||[]),
+  };
+  const newRecs={
+    inventories:D.inventories.filter(r=>!prevIDs.inventories.has(r.id)),
+    receivables:D.receivables.filter(r=>!prevIDs.receivables.has(r.id)),
+    returns:D.returns.filter(r=>!prevIDs.returns.has(r.id)),
+    sales:D.sales.filter(r=>!prevIDs.sales.has(r.id)),
+    frozen:(D.frozen||[]).filter(r=>!prevIDs.frozen.has(r.id)),
+  };
+  const totalNew=newRecs.inventories.length+newRecs.receivables.length+newRecs.returns.length+newRecs.sales.length+newRecs.frozen.length;
+  const date=new Date().toISOString().split('T')[0];
+  const nowTime=new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
+  const prevTime=prevSnap?new Date(prevSnap.takenAt).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'}):'البداية';
+  const label='تحديثات '+prevTime+' → '+nowTime+' ('+totalNew+' سجل جديد)';
+
+  // Save new snapshot NOW (this press becomes the new baseline)
+  const newSnap={
+    inventoryIDs:D.inventories.map(r=>r.id),
+    receivableIDs:D.receivables.map(r=>r.id),
+    returnIDs:D.returns.map(r=>r.id),
+    salesIDs:D.sales.map(r=>r.id),
+    frozenIDs:(D.frozen||[]).map(r=>r.id),
+    takenAt:Date.now(),
+  };
+  try{localStorage.setItem('chk-pub-snap',JSON.stringify(newSnap));}catch(e){}
+
+  // Save to Firebase
   try{
     const db=window.$db;
-    // Load previous snapshot to calculate diff
-    const prevSnap=await window.$getDoc(window.$doc(db,'published','latest'));
-    const prevIDs={
-      inventories:new Set((prevSnap.exists()&&prevSnap.data().snapshot?.inventoryIDs)||[]),
-      receivables:new Set((prevSnap.exists()&&prevSnap.data().snapshot?.receivableIDs)||[]),
-      returns:new Set((prevSnap.exists()&&prevSnap.data().snapshot?.returnIDs)||[]),
-      sales:new Set((prevSnap.exists()&&prevSnap.data().snapshot?.salesIDs)||[]),
-      frozen:new Set((prevSnap.exists()&&prevSnap.data().snapshot?.frozenIDs)||[]),
-    };
-    // Calculate new records since last publish
-    const newRecs={
-      inventories:D.inventories.filter(r=>!prevIDs.inventories.has(r.id)),
-      receivables:D.receivables.filter(r=>!prevIDs.receivables.has(r.id)),
-      returns:D.returns.filter(r=>!prevIDs.returns.has(r.id)),
-      sales:D.sales.filter(r=>!prevIDs.sales.has(r.id)),
-      frozen:(D.frozen||[]).filter(r=>!prevIDs.frozen.has(r.id)),
-    };
-    // Save publish with snapshot of current IDs + new records
     await window.$setDoc(window.$doc(db,'published','latest'),{
-      date,label,publishedAt:Date.now(),publishedBy:window.$user.email,
+      date,label,publishedAt:Date.now(),publishedBy:window.$user?.email||'',
       snapshot:{
-        inventoryIDs:D.inventories.map(r=>r.id),
-        receivableIDs:D.receivables.map(r=>r.id),
-        returnIDs:D.returns.map(r=>r.id),
-        salesIDs:D.sales.map(r=>r.id),
-        frozenIDs:(D.frozen||[]).map(r=>r.id),
+        inventoryIDs:newSnap.inventoryIDs,
+        receivableIDs:newSnap.receivableIDs,
+        returnIDs:newSnap.returnIDs,
+        salesIDs:newSnap.salesIDs,
+        frozenIDs:newSnap.frozenIDs,
       },
       newRecords:{
-        inventories:newRecs.inventories.map(r=>({id:r.id,date:r.date,notes:r.notes,kg:Object.values(r.items||{}).reduce((s,v)=>(s+(parseFloat(v.kg)||0)+(parseFloat(v.pcs)||0)*0.5),0)})),
+        inventories:newRecs.inventories.map(r=>({id:r.id,date:r.date,notes:r.notes||'',kg:Object.values(r.items||{}).reduce((s,v)=>(s+(parseFloat(v.kg)||0)+(parseFloat(v.pcs)||0)*0.5),0)})),
         receivables:newRecs.receivables.map(r=>({id:r.id,date:r.date,supplier:r.supplier||'',kg:r.grand||0})),
         returns:newRecs.returns.map(r=>({id:r.id,date:r.date,notes:r.notes||'',kg:Object.values(r.items||{}).reduce((s,v)=>(s+(parseFloat(v.kg)||0)+(parseFloat(v.pcs)||0)*0.5),0)})),
         sales:newRecs.sales.map(r=>({id:r.id,date:r.date,fileName:r.fileName||''})),
         frozen:newRecs.frozen.map(r=>({id:r.id,date:r.date,notes:r.notes||'',kg:FROZEN_PRODUCTS.reduce((s,p)=>s+(parseFloat(r.items?.[p.id])||0)*p.kgFactor,0)})),
       },
-      counts:{
-        newInventory:newRecs.inventories.length,
-        newReceivables:newRecs.receivables.length,
-        newReturns:newRecs.returns.length,
-        newSales:newRecs.sales.length,
-        newFrozen:newRecs.frozen.length,
-      }
+      counts:{newInventory:newRecs.inventories.length,newReceivables:newRecs.receivables.length,newReturns:newRecs.returns.length,newSales:newRecs.sales.length,newFrozen:newRecs.frozen.length}
     });
-    showToast('✅ تم النشر!');
-    setTimeout(()=>sharePublishWhatsApp(date,label,newRecs),500);
-  }catch(e){showToast('❌ Error: '+e.message);}
+  }catch(e){console.warn('Firebase publish error:',e);}
+
+  showToast('✅ تم النشر!');
+  setTimeout(()=>sharePublishWhatsApp(date,label,newRecs),300);
 }
 window.publishReport=publishReport;
 
