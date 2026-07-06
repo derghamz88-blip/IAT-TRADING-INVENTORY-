@@ -322,14 +322,13 @@ const TABS=[
   {key:'waste',        emoji:'♻️',ar:'Waste',        color:'#37474F',light:'#ECEFF1',border:'#B0BEC5'},
   {key:'production',   emoji:'🏭',ar:'Production',   color:'#D84315',light:'#FBE9E7',border:'#FFAB91'},
   {key:'frozen',       emoji:'❄️',ar:'Frozen',       color:'#0277BD',light:'#E1F5FE',border:'#4FC3F7'},
-  {key:'orders',       emoji:'🛒',ar:'Orders',       color:'#00838F',light:'#E0F7FA',border:'#80DEEA'},
   {key:'records',      emoji:'📋',ar:'Records',      color:'#0288D1',light:'#E1F5FE',border:'#81D4FA'},
   {key:'formulaA',     emoji:'🧮',ar:'Formula A',    color:'#4527A0',light:'#EDE7F6',border:'#B39DDB'},
   {key:'formulaB',     emoji:'🧮',ar:'Formula B',    color:'#00695C',light:'#E0F2F1',border:'#80CBC4'},
   {key:'diff',         emoji:'⚖️',ar:'Difference',   color:'#BF360C',light:'#FBE9E7',border:'#FFAB91'},
   {key:'settings',     emoji:'⚙️',ar:'Settings',     color:'#455A64',light:'#ECEFF1',border:'#B0BEC5'},
 ];
-const TABS_R1=['inventory','receivables','returns','sales','daysales','stocksummary','waste','production','frozen','orders'];
+const TABS_R1=['inventory','receivables','returns','sales','daysales','stocksummary','waste','production','frozen'];
 const TABS_R2=['records','formulaA','formulaB','diff','settings'];
 
 const TYPE_INFO={
@@ -340,9 +339,7 @@ const TYPE_INFO={
   daysales:     {emoji:'☀️',color:'#AD1457',label:'Day Sales'},
   stocksummary: {emoji:'📊',color:'#6A1B9A',label:'Sys.Stock'},
   waste:        {emoji:'♻️',color:'#37474F',label:'Waste'},
-  orders:       {emoji:'🛒',color:'#00838F',label:'Orders'},
 };
-
 
 // ═══ STORAGE KEYS ═══════════════════════════════════
 const SK='chk-inv-v3',SK_P='chk-prods-v1',SK_M='chk-map-v1',SK_SM='chk-stk-v1',SK_FA='chk-fa-v1',SK_FB='chk-fb-v1',SK_NWC='chk-nwc-types',SK_FP='chk-frozen-prods-v1';
@@ -376,14 +373,14 @@ let S={tab:'inventory',view:'list',record:null,search:'',expanded:new Set(),
        listFrom:'',listTo:'',gFrom:'',gTo:'',
        faShowDetail:false,fbShowDetail:false,
        _prodNWC:{}}; // per-product NWC batches
-let D={inventories:[],receivables:[],returns:[],sales:[],daySales:[],stockSummaries:[],waste:[],production:[],frozen:[],orders:[]};
+let D={inventories:[],receivables:[],returns:[],sales:[],daySales:[],stockSummaries:[],waste:[],production:[],frozen:[]};
 let FA=[],FB=[];
 let UP ={step:'upload',fileName:'',date:'',rows:[],converted:{},unmatched:[]};
 let UPD={step:'upload',fileName:'',date:'',rows:[],converted:{},unmatched:[]};
 let UPS={step:'upload',fileName:'',date:'',rows:[],converted:{},unmatched:[]};
 
 function load(){
-  try{const s=localStorage.getItem(SK);if(s){const d=JSON.parse(s);D={inventories:d.inventories||[],receivables:d.receivables||[],returns:d.returns||[],sales:d.sales||[],daySales:d.daySales||[],stockSummaries:d.stockSummaries||[],waste:d.waste||[],production:d.production||[],frozen:d.frozen||[],orders:d.orders||[]};}}
+  try{const s=localStorage.getItem(SK);if(s){const d=JSON.parse(s);D={inventories:d.inventories||[],receivables:d.receivables||[],returns:d.returns||[],sales:d.sales||[],daySales:d.daySales||[],stockSummaries:d.stockSummaries||[],waste:d.waste||[],production:d.production||[],frozen:d.frozen||[]};}}
   catch(e){}
 }
 function save(){
@@ -406,7 +403,6 @@ function dk(t){
   if(t==='daysales')return'daySales';
   if(t==='stocksummary')return'stockSummaries';
   if(t==='waste')return'waste';
-  if(t==='orders')return'orders';
   return'sales';
 }
 function ti(k){return TABS.find(t=>t.key===k);}
@@ -425,12 +421,11 @@ function getTotalKg(items,p){
 
 
 // ═══ FORMULA HELPERS ════════════════════════════════
-const REC_TYPE_MAP={inventories:'inventory',receivables:'receivables',returns:'returns',sales:'sales',daySales:'daysales',stockSummaries:'stocksummary',waste:'waste',production:'production',frozen:'frozen',orders:'orders'};
+const REC_TYPE_MAP={inventories:'inventory',receivables:'receivables',returns:'returns',sales:'sales',daySales:'daysales',stockSummaries:'stocksummary',waste:'waste',production:'production',frozen:'frozen'};
 
 function findRecord(id){
   for(const[key,type] of Object.entries(REC_TYPE_MAP)){
-    const arr=key==="orders"?D.orders:(D[key]||[]);
-    const r=arr.find(r=>r.id===id);
+    const r=(D[key]||[]).find(r=>r.id===id);
     if(r)return{record:r,type,key:type}; // key = type value (inventory/receivables/etc)
   }return null;
 }
@@ -569,8 +564,8 @@ function render(){
     else h+=view==='list'?renderList():renderForm();
   }
   else if(tab==='frozen')       h+=view==='form'?renderFrozenForm():renderFrozenTab();
-  else if(tab==='orders')       h+=renderOrdersTab();
-  else if(tab==='sales')        h+=view==='form'?renderForm():renderSalesTab();  else if(tab==='daysales')     h+=view==='form'?renderForm():renderDaySalesTab();
+  else if(tab==='sales')        h+=view==='form'?renderForm():renderSalesTab();
+  else if(tab==='daysales')     h+=view==='form'?renderForm():renderDaySalesTab();
   else if(tab==='stocksummary') h+=view==='form'?renderForm():renderStockTab();
   else if(tab==='production')   h+=view==='form'?renderProductionForm():renderProductionList();
   else if(tab==='records')      h+=renderRecords();
@@ -671,7 +666,6 @@ function renderNav(){
 // ─── List / Card / Form ───────────────────────────
 function renderList(){
   const inf=ti(S.tab),key=dk(S.tab);
-  if(S.tab==='orders') return renderOrdersTab();
   let recs=[...D[key]].sort((a,b)=>b.date.localeCompare(a.date));
   // Apply global date filter
   const from=S.gFrom,to=S.gTo;
@@ -938,7 +932,9 @@ function getRCTotals(){
     const v=parseFloat(RC.cuts[c.key])||0;if(!v)return;
     cutsKG+=c.unit==='pcs'?v*0.5:v;
   });
-  return{chickenKG,totalCTN,cutsKG,grand:chickenKG+cutsKG};
+  const directKg=parseFloat(RC.directKg)||0;
+  const totalChicken=chickenKG+directKg;
+  return{chickenKG:totalChicken,totalCTN,cutsKG,grand:totalChicken+cutsKG,directKg};
 }
 function updRC(){
   requestAnimationFrame(()=>{
@@ -1012,6 +1008,13 @@ function renderReceiptCalc(){
   </div>
   <div style="flex:1;min-width:185px"><div class="card">
       <div style="font-size:11px;font-weight:700;color:#1565C0;margin-bottom:7px">🐔 Whole Chicken (CTN)</div>
+      <div style="display:flex;align-items:center;gap:6px;padding:5px 7px;background:#E3F2FD;border-radius:7px;margin-bottom:6px">
+        <span style="font-size:10px;color:#1565C0;font-weight:700;min-width:70px">Direct KG:</span>
+        <input class="fi" type="text" inputmode="decimal" placeholder="0.00" value="${RC.directKg||''}" 
+          style="flex:1;font-size:14px;font-weight:700;text-align:center;border:1.5px solid #1565C0"
+          oninput="RC.directKg=normalizeNum(this.value)" onblur="updRC()">
+        <span style="font-size:10px;color:#1565C0">KG</span>
+      </div>
       ${sizeHTML}
     </div></div>
   </div>
@@ -1051,6 +1054,7 @@ function saveReceiptAsRec(){
     items:compactItems(items),
     ctns:Object.keys(ctns).length?ctns:undefined,
     sizePcs:Object.keys(sizePcs).length?sizePcs:undefined,
+    directKg:(RC.directKg&&parseFloat(RC.directKg)>0)?RC.directKg:undefined,
     cwc:cwcData.length?{
       rows:cwcData,
       totalNet:parseFloat(cwcTotalNet.toFixed(3)),
@@ -1336,17 +1340,43 @@ function showProdNWC(prod){
     <div id="pnwc-rows"></div>
     <button onclick="addPNWCRow('${prod.replace(/'/g,"\\'")}');event.preventDefault()"
       style="width:100%;padding:8px;border:1.5px dashed #FFB74D;background:#FFF8E1;border-radius:9px;cursor:pointer;font-size:13px;color:#E65100;margin-bottom:10px">+ Add Batch</button>
-    <div style="background:#E8F5E9;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div style="background:#E8F5E9;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <span style="font-size:13px;font-weight:700;color:#455A64">Total Net:</span>
       <span id="pnwc-total" style="font-size:22px;font-weight:900;color:#2E7D32">0.000 KG</span>
     </div>
+    <div style="background:#E3F2FD;border-radius:10px;padding:10px 14px;margin-bottom:10px">
+      <div style="font-size:11px;color:#1565C0;font-weight:700;margin-bottom:6px">➕ أو أدخل وزن مباشر (KG)</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="fi" type="text" inputmode="decimal" id="pnwc-direct" placeholder="0.000" 
+          style="flex:1;font-size:18px;font-weight:700;text-align:center;border:2px solid #1565C0">
+        <button onclick="applyPNWCDirect('${prod.replace(/'/g,"\\'")}');event.preventDefault()"
+          style="padding:10px 16px;background:#1565C0;color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:13px;font-weight:700">✅ Apply</button>
+      </div>
+    </div>
     <button onclick="applyPNWCTotal('${prod.replace(/'/g,"\\'")}');event.preventDefault()"
-      style="width:100%;padding:11px;background:#1B5E20;color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700">✅ Apply to ${prod}</button>
+      style="width:100%;padding:11px;background:#1B5E20;color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700">✅ Apply Batches to ${prod}</button>
   </div>`;
   document.body.appendChild(m);
   renderPNWCRows(prod);
 }
 
+function applyPNWCDirect(prod){
+  const inp=document.getElementById('pnwc-direct');
+  if(!inp)return;
+  const val=parseFloat(normalizeNum(inp.value))||0;
+  if(val<=0){showToast('Enter a valid weight');return;}
+  if(!S.record)return;
+  if(!S.record.items)S.record.items={};
+  if(!S.record.items[prod])S.record.items[prod]={kg:'',pcs:''};
+  const existingKg=parseFloat(S.record.items[prod].kg)||0;
+  S.record.items[prod].kg=(existingKg+val).toFixed(3);
+  document.getElementById('pnwc-modal')?.remove();
+  render();
+  requestAnimationFrame(()=>{
+    const inp2=document.querySelector('[data-prod="'+prod+'"][data-field="kg"]');
+    if(inp2)inp2.style.background='#FFFDE7';
+  });
+}
 function getPNWCTotal(prod){
   return(S._prodNWC[prod]||[]).reduce((s,r)=>{
     const wt=getNWCWt(r);
@@ -1462,10 +1492,11 @@ function applyPNWCTotal(prod){
     if(!RC.extraItems[prod])RC.extraItems[prod]={kg:'',pcs:''};
     RC.extraItems[prod].kg=tot.toFixed(3);
   } else if(S.record){
-    // In normal form → update S.record.items
+    // In normal form → ADD to existing kg value
     if(!S.record.items)S.record.items={};
     if(!S.record.items[prod])S.record.items[prod]={kg:'',pcs:''};
-    S.record.items[prod].kg=tot.toFixed(3);
+    const existingKg=parseFloat(S.record.items[prod].kg)||0;
+    S.record.items[prod].kg=(existingKg+tot).toFixed(3);
     // Save NWC rows with the record
     if(!S.record._nwc)S.record._nwc={};
     const rows=S._prodNWC&&S._prodNWC[prod];
@@ -2666,7 +2697,7 @@ function editRec(id){
     _editRecId=id;
     const sup=r.notes?r.notes.replace(/^Receivables\s*[—\-]\s*/,'').trim():'';
     RC={supplier:sup,date:r.date,temp:r.temp||'',ctns:{...(r.ctns||{})},
-        sizePcs:{...(r.sizePcs||{})},smallPcs:RC.smallPcs||10,largePcs:RC.largePcs||8,cuts:{},extraItems:{}};
+        sizePcs:{...(r.sizePcs||{})},smallPcs:RC.smallPcs||10,largePcs:RC.largePcs||8,cuts:{},extraItems:{},directKg:r.directKg||''};
     // Load all items into extraItems (excluding chicken which comes from CTN)
     const items=expandItems(r.items);
     Object.entries(items).forEach(([p,v])=>{
@@ -2875,7 +2906,7 @@ function updItem(p,f,el){
 
 
 // ─── Publish System ────────────────────────────────
-// Save snapshot button
+// Save snapshot (stores last 2 snapshots)
 function savePublishSnap(){
   if(!window.$isAdmin){showToast('Admin only');return;}
   const snap={
@@ -2886,41 +2917,56 @@ function savePublishSnap(){
     frozenIDs:(D.frozen||[]).map(r=>r.id),
     takenAt:Date.now(),
   };
-  try{localStorage.setItem('chk-pub-snap',JSON.stringify(snap));}catch(e){}
+  // Load existing snaps, keep last 2
+  let snaps=[];
+  try{const s=localStorage.getItem('chk-pub-snaps');if(s)snaps=JSON.parse(s);}catch(e){}
+  snaps.push(snap);
+  if(snaps.length>2)snaps=snaps.slice(-2);
+  try{localStorage.setItem('chk-pub-snaps',JSON.stringify(snaps));}catch(e){}
   const t=new Date(snap.takenAt).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
-  showToast('\u{1F4CC} Snapshot saved — '+t);
+  showToast('Snapshot saved - '+t+(snaps.length===2?' (ready to publish)':' (need one more snap to publish)'));
 }
 window.savePublishSnap=savePublishSnap;
 
-// Publish = diff since last snapshot, send WhatsApp
+// Publish = diff between last 2 snapshots
 async function publishReport(){
   if(!window.$isAdmin){showToast('Admin only');return;}
-  let prevSnap=null;
-  try{const s=localStorage.getItem('chk-pub-snap');if(s)prevSnap=JSON.parse(s);}catch(e){}
+  let snaps=[];
+  try{const s=localStorage.getItem('chk-pub-snaps');if(s)snaps=JSON.parse(s);}catch(e){}
+  if(snaps.length<2){showToast('Need 2 snapshots first! Press save twice.');return;}
+  const snapA=snaps[snaps.length-2]; // older
+  const snapB=snaps[snaps.length-1]; // newer
   const prevIDs={
-    inventories:new Set((prevSnap&&prevSnap.inventoryIDs)||[]),
-    receivables:new Set((prevSnap&&prevSnap.receivableIDs)||[]),
-    returns:new Set((prevSnap&&prevSnap.returnIDs)||[]),
-    sales:new Set((prevSnap&&prevSnap.salesIDs)||[]),
-    frozen:new Set((prevSnap&&prevSnap.frozenIDs)||[]),
+    inventories:new Set(snapA.inventoryIDs||[]),
+    receivables:new Set(snapA.receivableIDs||[]),
+    returns:new Set(snapA.returnIDs||[]),
+    sales:new Set(snapA.salesIDs||[]),
+    frozen:new Set(snapA.frozenIDs||[]),
+  };
+  const curIDs={
+    inventories:new Set(snapB.inventoryIDs||[]),
+    receivables:new Set(snapB.receivableIDs||[]),
+    returns:new Set(snapB.returnIDs||[]),
+    sales:new Set(snapB.salesIDs||[]),
+    frozen:new Set(snapB.frozenIDs||[]),
   };
   const newRecs={
-    inventories:D.inventories.filter(r=>!prevIDs.inventories.has(r.id)),
-    receivables:D.receivables.filter(r=>!prevIDs.receivables.has(r.id)),
-    returns:D.returns.filter(r=>!prevIDs.returns.has(r.id)),
-    sales:D.sales.filter(r=>!prevIDs.sales.has(r.id)),
-    frozen:(D.frozen||[]).filter(r=>!prevIDs.frozen.has(r.id)),
+    inventories:D.inventories.filter(r=>curIDs.inventories.has(r.id)&&!prevIDs.inventories.has(r.id)),
+    receivables:D.receivables.filter(r=>curIDs.receivables.has(r.id)&&!prevIDs.receivables.has(r.id)),
+    returns:D.returns.filter(r=>curIDs.returns.has(r.id)&&!prevIDs.returns.has(r.id)),
+    sales:D.sales.filter(r=>curIDs.sales.has(r.id)&&!prevIDs.sales.has(r.id)),
+    frozen:(D.frozen||[]).filter(r=>curIDs.frozen.has(r.id)&&!prevIDs.frozen.has(r.id)),
   };
   const totalNew=newRecs.inventories.length+newRecs.receivables.length+newRecs.returns.length+newRecs.sales.length+newRecs.frozen.length;
   const date=new Date().toISOString().split('T')[0];
-  const nowTime=new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
-  const prevTime=prevSnap?new Date(prevSnap.takenAt).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'}):'Start';
-  const label='Updates '+prevTime+' → '+nowTime+' ('+totalNew+' new)';
+  const timeA=new Date(snapA.takenAt).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
+  const timeB=new Date(snapB.takenAt).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
+  const label='Updates '+timeA+' to '+timeB+' ('+totalNew+' new)';
   try{
     const db=window.$db;
     await window.$setDoc(window.$doc(db,'published','latest'),{
       date,label,publishedAt:Date.now(),publishedBy:window.$user?.email||'',
-      snapshot:{inventoryIDs:D.inventories.map(r=>r.id),receivableIDs:D.receivables.map(r=>r.id),returnIDs:D.returns.map(r=>r.id),salesIDs:D.sales.map(r=>r.id),frozenIDs:(D.frozen||[]).map(r=>r.id)},
+      snapshot:{inventoryIDs:snapB.inventoryIDs,receivableIDs:snapB.receivableIDs,returnIDs:snapB.returnIDs,salesIDs:snapB.salesIDs,frozenIDs:snapB.frozenIDs},
       newRecords:{
         inventories:newRecs.inventories.map(r=>({id:r.id,date:r.date,notes:r.notes||'',kg:Object.values(r.items||{}).reduce((s,v)=>(s+(parseFloat(v.kg)||0)+(parseFloat(v.pcs)||0)*0.5),0)})),
         receivables:newRecs.receivables.map(r=>({id:r.id,date:r.date,supplier:r.supplier||'',kg:r.grand||0})),
@@ -3044,126 +3090,6 @@ function loadFrozenProducts(){try{const s=localStorage.getItem(SK_FP);if(s)FROZE
 function saveFrozenProducts(){try{localStorage.setItem(SK_FP,JSON.stringify(FROZEN_PRODUCTS));_scheduleSave();}catch(e){}}
 
 // ─── Frozen Tab Render ────────────────────────────
-// ══ OneDrive for Orders Total ══
-let _msalApp=null;
-
-async function _initMsal(){
-  if(_msalApp) return;
-  _msalApp=true; // dummy
-}
-
-async function _getODToken(){
-  // استخدم نفس token الإنفنتوري
-  const t=odGetToken();
-  if(t) return t;
-  // لو ما في token، سجل دخول
-  await odLogin('load_orders');
-  return null;
-}
-
-async function _getODToken(){
-  await _initMsal();
-  const scopes=['Files.ReadWrite'];
-  try{
-    const acc=_msalApp.getAllAccounts();
-    if(acc.length>0){
-      const res=await _msalApp.acquireTokenSilent({scopes,account:acc[0]});
-      return res.accessToken;
-    }
-  }catch(e){}
-  const res=await _msalApp.loginPopup({scopes});
-  return res.accessToken;
-}
-
-async function loadOrdersFromOD(){
-  try{
-    showToast('⏳ Loading...');
-    const token=odGetToken();
-    if(!token){odLogin('load_orders');return;}
-    const res=await fetch('https://graph.microsoft.com/v1.0/me/drive/root:/orders_total.json:/content',{
-      headers:{'Authorization':'Bearer '+token}
-    });
-    if(!res.ok) throw new Error('File not found on OneDrive');
-    _ordersData=await res.json();
-    render();
-    showToast('✓ Loaded: '+(_ordersData.date||''));
-  }catch(e){
-    showToast('⚠️ '+e.message);
-  }
-}
-
-// ══ Orders Tab ══════════════════════════════════════
-let _ordersData=null; // البيانات المحملة
-
-function renderOrdersTab(){
-  const inf=ti('orders');
-  let h=`<div class="card" style="margin-bottom:10px">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-      <span style="font-size:20px">${inf.emoji}</span>
-      <div style="flex:1">
-        <div style="font-weight:700;color:${inf.color}">Orders Total</div>
-        <div style="font-size:11px;color:#90A4AE">orders_total.json from OneDrive</div>
-      </div>
-      <button onclick="loadOrdersFromOD()" style="background:${inf.light};border:1.5px solid ${inf.border};border-radius:8px;padding:8px 14px;font-size:13px;color:${inf.color};font-weight:700;cursor:pointer">☁️ Load from OneDrive</button>
-    </div>`;
-
-  if(_ordersData){
-    const r=_ordersData;
-    const prods=Object.entries(r.items||{}).filter(([,v])=>parseFloat(v.kg||v)||0);
-    const total=prods.reduce((s,[,v])=>s+(parseFloat(v.kg||v)||0),0);
-    h+=`<div style="margin-top:12px;border:1px solid ${inf.border};border-radius:8px;overflow:hidden">
-      <div style="background:${inf.light};padding:8px 12px;display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <span style="font-weight:700;color:${inf.color}">${inf.emoji} ${r.date}</span>
-          ${r.notes?`<span style="font-size:11px;color:#546E7A;margin-left:6px">— ${r.notes}</span>`:''}
-        </div>
-        <div style="display:flex;gap:6px;align-items:center">
-          <span style="font-size:12px;font-weight:700;color:${inf.color}">${total.toFixed(1)} kg</span>
-          <button onclick="useOrderInFormula()" style="background:${inf.light};border:1px solid ${inf.border};border-radius:5px;padding:4px 10px;font-size:12px;color:${inf.color};cursor:pointer;font-weight:700">+ Add to Formula A</button>
-        </div>
-      </div>
-      <table style="border-collapse:collapse;width:100%;font-size:12px">
-        ${prods.map(([p,v],i)=>`
-        <tr style="border-bottom:1px solid #EEE;background:${i%2?'#FAFAFA':'#FFF'}">
-          <td style="padding:5px 10px;color:#37474F">${p}</td>
-          <td style="padding:5px 10px;text-align:right;font-weight:700;color:${inf.color}">${parseFloat(v.kg||v||0).toFixed(2)} kg</td>
-        </tr>`).join('')}
-      </table>
-    </div>`;
-  }
-
-  h+='</div>';
-  return h;
-}
-
-function loadOrdersJSON(input){
-  const file=input.files[0];
-  if(!file) return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      _ordersData=JSON.parse(e.target.result);
-      render();
-      showToast('✓ Loaded: '+(_ordersData.date||''));
-    }catch(ex){showToast('⚠️ Invalid JSON file');}
-  };
-  reader.readAsText(file);
-}
-
-function useOrderInFormula(){
-  if(!_ordersData){showToast('Load a file first');return;}
-  // أضف كـ record مؤقت في D.orders
-  const existing=D.orders.find(r=>r.id===_ordersData.id);
-  if(!existing) D.orders.unshift(_ordersData);
-  // أضف للـ Formula A
-  const alreadyInFA=FA.find(op=>op.id===_ordersData.id);
-  if(alreadyInFA){showToast('Already in Formula A');return;}
-  FA.push({id:_ordersData.id,op:'+'});
-  saveState();
-  S.tab='formulaA';render();
-  showToast('✓ Added to Formula A');
-}
-
 function renderFrozenTab(){
   const inf=ti('frozen');
   if(S.view==='form')return renderFrozenForm();
@@ -4675,7 +4601,7 @@ function exportData(){
 
 // ═══ ONEDRIVE — PKCE OAuth (SPA-compatible, no library) ══
 const OD_CLIENT_ID='86182a86-981c-46ab-a5e9-c61d8410c64b';
-const OD_REDIRECT='https://derghamz88-blip.github.io/IAT-Inventory-/chicken-inventory.html';
+const OD_REDIRECT='https://derghamz88-blip.github.io/IAT-TRADING-INVENTORY-/chicken-inventory.html';
 
 function odRandStr(n){
   const c='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
@@ -5097,13 +5023,7 @@ async function _loadAdminData(adminId){
   if(mainSnap.exists()){
     // Firebase has data - load it
     const d=mainSnap.data();
-    if(d.D)D={inventories:[],receivables:[],returns:[],sales:[],daySales:[],stockSummaries:[],waste:[],production:[],frozen:[],orders:[],...d.D};
-
-    // تحميل orders من collection منفصل
-    try{
-      const ordSnap=await window.$getDocs(window.$col(db,'orders'));
-      D.orders=ordSnap.docs.map(d=>({...d.data()})).sort((a,b)=>b.date.localeCompare(a.date));
-    }catch(e){D.orders=[];}
+    if(d.D)D={inventories:[],receivables:[],returns:[],sales:[],daySales:[],stockSummaries:[],waste:[],production:[],frozen:[],...d.D};
     if(d.FA)FA=d.FA;if(d.FB)FB=d.FB;
     if(d.PRODUCTS&&d.PRODUCTS.length)PRODUCTS=d.PRODUCTS;
     if(d.FROZEN_PRODUCTS&&d.FROZEN_PRODUCTS.length)FROZEN_PRODUCTS=d.FROZEN_PRODUCTS;
