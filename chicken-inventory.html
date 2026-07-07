@@ -73,6 +73,19 @@ onAuthStateChanged(_auth,user=>{
   --col-muted:#78909C;
 }
 body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--col-bg);min-height:100vh;color:var(--col-text);-webkit-tap-highlight-color:transparent}
+body.desktop-mode{font-size:16px}
+body.desktop-mode .main{max-width:1100px;padding:18px 24px;gap:12px}
+body.desktop-mode .hdr{padding:14px 24px;min-height:64px}
+body.desktop-mode .card{padding:18px 20px;border-radius:12px}
+body.desktop-mode .btn{padding:10px 20px;font-size:14px;border-radius:9px}
+body.desktop-mode .fi{padding:9px 12px;font-size:14px;border-radius:8px}
+body.desktop-mode .nav{padding:0 24px;gap:6px}
+body.desktop-mode .ntb{padding:9px 16px;font-size:13px}
+body.desktop-mode .stb{padding:9px 16px;font-size:13px}
+body.desktop-mode input[type=text],body.desktop-mode input[type=number],body.desktop-mode input[type=date],body.desktop-mode select,body.desktop-mode textarea{font-size:15px;padding:9px 12px}
+body.desktop-mode table{font-size:14px}
+body.desktop-mode th,body.desktop-mode td{padding:9px 12px}
+body.desktop-mode .hdr button{padding:10px 15px;font-size:16px}
 
 /* ── Header ─────────────────────────────────────────── */
 .hdr{background:linear-gradient(135deg,#0D1B2A,var(--col-dark));padding:10px var(--pad);display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100;min-height:52px}
@@ -636,6 +649,7 @@ function renderHdr(){
     <div style="display:flex;gap:2px;margin-left:6px;align-items:center">
       <button onclick="odSaveClick()" title="Save to OneDrive" style="padding:7px 11px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:7px;color:#fff;cursor:pointer;font-size:18px;line-height:1">☁️</button>
       <button onclick="odForceReset()" title="Reset OneDrive" style="padding:7px 11px;background:rgba(255,100,100,.2);border:1px solid rgba(255,100,100,.4);border-radius:7px;color:#fff;cursor:pointer;font-size:14px;line-height:1">🔄</button>
+      <button onclick="toggleDesktopMode()" title="Toggle Desktop/Mobile mode" style="padding:7px 11px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:7px;color:#fff;cursor:pointer;font-size:14px;line-height:1">${document.body?.classList.contains('desktop-mode')?'📱':'🖥️'}</button>
       <button onclick="showNetCalc()" title="Net Weight Calculator" style="padding:7px 11px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:7px;color:#fff;cursor:pointer;font-size:18px;line-height:1">⚖️</button>
       ${window.$isAdmin?`
       <button onclick="savePublishSnap()" title="حفظ نقطة البداية" style="padding:7px 11px;background:rgba(100,200,100,.25);border:1px solid rgba(100,200,100,.5);border-radius:7px;color:#fff;cursor:pointer;font-size:16px;line-height:1">💾</button>
@@ -4810,6 +4824,13 @@ async function checkODCallback(){
 }
 
 // Debug helper — shows what's in URL + localStorage
+function toggleDesktopMode(){
+  const isDesktop=document.body.classList.toggle('desktop-mode');
+  localStorage.setItem('chk-desktop-mode', isDesktop?'1':'0');
+  showToast(isDesktop?'🖥️ Desktop mode ON':'📱 Mobile mode ON');
+}
+// Restore desktop mode on load
+(function(){if(localStorage.getItem('chk-desktop-mode')==='1')document.body.classList.add('desktop-mode');})();
 function odForceReset(){
   if(!confirm('Reset OneDrive connection?\nYou will need to log in again.'))return;
   localStorage.removeItem('od-at');
