@@ -2941,25 +2941,18 @@ async function publishReport(){
     sales:new Set(snapB.salesIDs||[]),
     frozen:new Set(snapB.frozenIDs||[]),
   };
-  const _prevIDs={
-    inventories:new Set((prevSnap&&prevSnap.inventoryIDs)||[]),
-    receivables:new Set((prevSnap&&prevSnap.receivableIDs)||[]),
-    returns:new Set((prevSnap&&prevSnap.returnIDs)||[]),
-    sales:new Set((prevSnap&&prevSnap.salesIDs)||[]),
-    frozen:new Set((prevSnap&&prevSnap.frozenIDs)||[]),
-  };
   const newRecs={
-    inventories:D.inventories.filter(r=>curIDs.inventories.has(r.id)&&!_prevIDs.inventories.has(r.id)),
-    receivables:D.receivables.filter(r=>curIDs.receivables.has(r.id)&&!_prevIDs.receivables.has(r.id)),
-    returns:D.returns.filter(r=>curIDs.returns.has(r.id)&&!_prevIDs.returns.has(r.id)),
-    sales:D.sales.filter(r=>curIDs.sales.has(r.id)&&!_prevIDs.sales.has(r.id)),
-    frozen:(D.frozen||[]).filter(r=>curIDs.frozen.has(r.id)&&!_prevIDs.frozen.has(r.id)),
+    inventories:D.inventories.filter(r=>curIDs.inventories.has(r.id)&&!prevIDs.inventories.has(r.id)),
+    receivables:D.receivables.filter(r=>curIDs.receivables.has(r.id)&&!prevIDs.receivables.has(r.id)),
+    returns:D.returns.filter(r=>curIDs.returns.has(r.id)&&!prevIDs.returns.has(r.id)),
+    sales:D.sales.filter(r=>curIDs.sales.has(r.id)&&!prevIDs.sales.has(r.id)),
+    frozen:(D.frozen||[]).filter(r=>curIDs.frozen.has(r.id)&&!prevIDs.frozen.has(r.id)),
   };
   const totalNew=newRecs.inventories.length+newRecs.receivables.length+newRecs.returns.length+newRecs.sales.length+newRecs.frozen.length;
   const date=new Date().toISOString().split('T')[0];
-  const nowTime=new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
-  const prevTime=prevSnap?new Date(prevSnap.takenAt).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'}):'Start';
-  const label='Updates '+prevTime+' → '+nowTime+' ('+totalNew+' new)';
+  const timeA=new Date(snapA.takenAt).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
+  const timeB=new Date(snapB.takenAt).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
+  const label='Updates '+timeA+' → '+timeB+' ('+totalNew+' new)';
   try{
     const db=window.$db;
     await window.$setDoc(window.$doc(db,'published','latest'),{
