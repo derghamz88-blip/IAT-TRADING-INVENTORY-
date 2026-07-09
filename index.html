@@ -374,7 +374,7 @@ let S={tab:'inventory',view:'list',record:null,search:'',expanded:new Set(),
        stab:'products',mapSearch:'',smSearch:'',mapEdit:null,smEdit:null,
        recFilter:'all',faFilter:'all',fbFilter:'all',faFrom:'',faTo:'',fbFrom:'',fbTo:'',
        listFrom:'',listTo:'',gFrom:'',gTo:'',
-       faShowDetail:false,fbShowDetail:false,
+       faShowDetail:false,fbShowDetail:false,diffShowDetail:false,
        _prodNWC:{}}; // per-product NWC batches
 let D={inventories:[],receivables:[],returns:[],sales:[],daySales:[],stockSummaries:[],waste:[],production:[],frozen:[],orders:[]};
 let FA=[],FB=[];
@@ -1416,7 +1416,7 @@ function renderPNWCRows(prod){
           <input class="fi" type="text" inputmode="decimal" id="pnwc-gross-${row.id}" value="${row.gross}" placeholder="0.000"
             style="width:100%;font-size:15px;font-weight:700;text-align:center"
             oninput="setPNWC('${prod.replace(/'/g,"\\'")}',${row.id},'gross',this.value)"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();addPNWCRow('${prod.replace(/'/g,"\\'")}');}">
+            onkeydown="if(event.key==='Enter'){event.preventDefault();const _p='${prod.replace(/'/g,"\\'")}';addPNWCRow(_p);requestAnimationFrame(()=>{const _rows=S._prodNWC&&S._prodNWC[_p];if(_rows&&_rows.length){document.getElementById('pnwc-cnt-'+_rows[_rows.length-1].id)?.focus();}});}">
         </div>
         <div style="flex:1"><div style="font-size:9px;color:#90A4AE;margin-bottom:2px">Net (KG)</div>
           <div id="pnwc-net-${row.id}" style="background:${net>0?'#E8F5E9':'#F5F5F5'};border-radius:7px;padding:8px;text-align:center;font-size:14px;font-weight:800;color:${net>0?'#2E7D32':'#90A4AE'}">
@@ -1486,11 +1486,10 @@ function applyPNWCTotal(prod){
     if(!RC.extraItems[prod])RC.extraItems[prod]={kg:'',pcs:''};
     RC.extraItems[prod].kg=tot.toFixed(3);
   } else if(S.record){
-    // In normal form → ADD to existing kg
+    // In normal form → REPLACE kg with NWC total
     if(!S.record.items)S.record.items={};
     if(!S.record.items[prod])S.record.items[prod]={kg:'',pcs:''};
-    const existingKg=parseFloat(S.record.items[prod].kg)||0;
-    S.record.items[prod].kg=(existingKg+tot).toFixed(3);
+    S.record.items[prod].kg=tot.toFixed(3);
     // Save NWC rows with the record
     if(!S.record._nwc)S.record._nwc={};
     const rows=S._prodNWC&&S._prodNWC[prod];
@@ -2207,6 +2206,9 @@ function renderDiff(){
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
       <div style="font-size:13px;font-weight:700;color:#BF360C">⚖️ Difference: B − A</div>
       <div style="display:flex;gap:5px;flex-wrap:wrap">
+        <button class="btn" style="background:#E8EAF6;color:#BF360C;font-size:11px" onclick="S.diffShowDetail=!S.diffShowDetail;render()">
+          ${S.diffShowDetail?'📊 Hide Detail':'📊 Show Detail'}
+        </button>
         <button class="btn" style="background:#1B5E20;color:#fff;padding:4px 10px;font-size:11px" onclick="exportFormulaXLSX('diff')">📊 Excel</button>
         <button class="btn" style="background:#1565C0;color:#fff;padding:4px 10px;font-size:11px" onclick="exportFormulaImage('diff')">🖼️ Image</button>
         <button class="btn" style="background:#C62828;color:#fff;padding:4px 10px;font-size:11px" onclick="exportFormulaPDF('diff')">📄 PDF</button>
@@ -2288,6 +2290,18 @@ function renderDiff(){
     <td style="text-align:center;padding:5px;background:#BF360C">${dTotal>=0?'+':''}${dTotal.toFixed(2)}</td>
     <td style="text-align:center;padding:5px;background:#BF360C99">${dTotal>=0?'+':''}${dTotal.toFixed(2)}</td>
   </tr></tbody></table></div></div>`;
+
+  // Show Detail section
+  if(S.diffShowDetail){
+    h+=`<div class="card" style="border:1.5px solid #FFAB91;margin-top:8px">
+      <div style="font-size:13px;font-weight:700;color:#BF360C;margin-bottom:10px">📊 Detailed Breakdown</div>
+      <div style="font-size:11px;font-weight:700;color:#4527A0;margin-bottom:6px">🧮 Formula A</div>
+      ${renderFormulaDetail('a')}
+      <div style="font-size:11px;font-weight:700;color:#00695C;margin:12px 0 6px">🧮 Formula B</div>
+      ${renderFormulaDetail('b')}
+    </div>`;
+  }
+
   return h;
 }
 
