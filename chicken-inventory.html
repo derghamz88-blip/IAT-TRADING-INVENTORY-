@@ -318,6 +318,7 @@ const TABS=[
   {key:'returns',      emoji:'🔄',ar:'Returns',      color:'#C62828',light:'#FFEBEE',border:'#EF9A9A'},
   {key:'sales',        emoji:'📤',ar:'Sales',        color:'#F57F17',light:'#FFFDE7',border:'#FFE082'},
   {key:'daysales',     emoji:'☀️',ar:'Day Sales',    color:'#AD1457',light:'#FCE4EC',border:'#F48FB1'},
+  {key:'salesavg',     emoji:'📈',ar:'Sales Avg',    color:'#E65100',light:'#FFF3E0',border:'#FFCC80'},
   {key:'stocksummary', emoji:'📊',ar:'Sys.Stock',    color:'#6A1B9A',light:'#F3E5F5',border:'#CE93D8'},
   {key:'waste',        emoji:'♻️',ar:'Waste',        color:'#37474F',light:'#ECEFF1',border:'#B0BEC5'},
   {key:'production',   emoji:'🏭',ar:'Production',   color:'#D84315',light:'#FBE9E7',border:'#FFAB91'},
@@ -329,7 +330,7 @@ const TABS=[
   {key:'diff',         emoji:'⚖️',ar:'Difference',   color:'#BF360C',light:'#FBE9E7',border:'#FFAB91'},
   {key:'settings',     emoji:'⚙️',ar:'Settings',     color:'#455A64',light:'#ECEFF1',border:'#B0BEC5'},
 ];
-const TABS_R1=['inventory','receivables','returns','sales','daysales','stocksummary','waste','production','frozen','orders'];
+const TABS_R1=['inventory','receivables','returns','sales','daysales','salesavg','stocksummary','waste','production','frozen','orders'];
 const TABS_R2=['records','formulaA','formulaB','diff','settings'];
 
 const TYPE_INFO={
@@ -428,6 +429,9 @@ function getTotalKg(items,p){
 const REC_TYPE_MAP={inventories:'inventory',receivables:'receivables',returns:'returns',sales:'sales',daySales:'daysales',stockSummaries:'stocksummary',waste:'waste',production:'production',frozen:'frozen',orders:'orders'};
 
 function findRecord(id){
+  // Check virtual avg records first
+  if(id&&id.startsWith('avg-')&&D._avgRecs&&D._avgRecs[id])
+    return{record:D._avgRecs[id],type:'salesavg',key:'_avgRecs'};
   for(const[key,type] of Object.entries(REC_TYPE_MAP)){
     const arr=key==="orders"?D.orders:(D[key]||[]);
     const r=arr.find(r=>r.id===id);
@@ -571,6 +575,7 @@ function render(){
   else if(tab==='frozen')       h+=view==='form'?renderFrozenForm():renderFrozenTab();
   else if(tab==='orders')       h+=renderOrdersTab();
   else if(tab==='sales')        h+=view==='form'?renderForm():renderSalesTab();  else if(tab==='daysales')     h+=view==='form'?renderForm():renderDaySalesTab();
+  else if(tab==='salesavg')     h+=renderSalesAvg();
   else if(tab==='stocksummary') h+=view==='form'?renderForm():renderStockTab();
   else if(tab==='production')   h+=view==='form'?renderProductionForm():renderProductionList();
   else if(tab==='records')      h+=renderRecords();
@@ -2569,6 +2574,234 @@ function saveStockRec(){
 }
 
 // ─── Sales Tab ────────────────────────────────────
+function getSalesQty(r){
+  const out={};
+  const items=r.converted||r.items||{};
+  Object.entries(items).forEach(([prod,val])=>{
+    let qty=0;
+    if(typeof val==='number'){
+      qty=val;
+    } else if(val&&typeof val==='object'){
+      if(C_MAP&&C_MAP[prod]){
+        // 500g product: use pcs, convert to KG equivalent
+        qty=(parseFloat(val.pcs)||0)*0.5;
+      } else {
+        qty=parseFloat(val.kg)||0;
+      }
+    }
+    if(qty>0)out[prod]=qty;
+  });
+  return out;
+}
+function addAvgToFormula(fid){
+  const period=S.salesAvgPeriod||'week';
+  const now=new Date();
+  const todayStr=now.toISOString().split('T')[0];
+  const days=period==='3days'?3:period==='week'?7:period==='month'?30:90;
+  const cutoff=new Date(now);cutoff.setDate(cutoff.getDate()-days);
+  const cutoffStr=cutoff.toISOString().split('T')[0];
+
+  const allSales=[...D.sales,...(D.daySales||[])].filter(r=>r.date>cutoffStr&&r.date<=todayStr);
+
+  // Merge by date
+  const byDate={};
+  allSales.forEach(r=>{
+    if(!byDate[r.date])byDate[r.date]={};
+    Object.entries(getSalesQty(r)).forEach(([prod,qty])=>{
+      byDate[r.date][prod]=(byDate[r.date][prod]||0)+qty;
+    });
+  });
+
+  const totals={};const dayCounts={};
+  Object.entries(byDate).forEach(([date,prods])=>{
+    Object.entries(prods).forEach(([prod,qty])=>{
+      if(qty>0){
+        totals[prod]=(totals[prod]||0)+qty;
+        if(!dayCounts[prod])dayCounts[prod]=new Set();
+        dayCounts[prod].add(date);
+      }
+    });
+  });
+
+  // Build items from averages
+  const items={};
+  PRODUCTS.forEach(p=>{
+    const avg=dayCounts[p]?totals[p]/dayCounts[p].size:0;
+    if(avg>0){
+      if(C_MAP&&C_MAP[p])items[p]={kg:'',pcs:avg.toFixed(1)};
+      else items[p]={kg:avg.toFixed(3),pcs:''};
+    }
+  });
+
+  // Create virtual record
+  const virtId='avg-'+period+'-'+todayStr;
+  const virtRec={id:virtId,date:todayStr,notes:'Sales Avg ('+period+')',items};
+
+  // Remove old avg records from formula
+  if(fid==='a')FA=FA.filter(o=>!o.id.startsWith('avg-'));
+  else FB=FB.filter(o=>!o.id.startsWith('avg-'));
+
+  // Store virtual record in D (temporary)
+  if(!D._avgRecs)D._avgRecs={};
+  D._avgRecs[virtId]=virtRec;
+
+  addToFormula(fid,virtId,'+');
+  showToast('✅ Added Sales Avg to Formula '+fid.toUpperCase());
+}
+function renderSalesAvg(){
+  // Get filter period
+  const period=S.salesAvgPeriod||'week';
+  const now=new Date();
+  const todayStr=now.toISOString().split('T')[0];
+
+  // Get all sales records sorted by date desc
+  const allSales=[...D.sales].sort((a,b)=>b.date.localeCompare(a.date));
+  const daySalesAll=[...(D.daySales||[])].sort((a,b)=>b.date.localeCompare(a.date));
+
+  // Compare date: use selected date (default today), merge Sales+DaySales
+  const compareStr=S.salesAvgCompare||todayStr;
+  const compareRecs=[...allSales,...daySalesAll].filter(r=>r.date===compareStr);
+  const compareMerged={};
+  compareRecs.forEach(r=>{Object.entries(getSalesQty(r)).forEach(([p,q])=>{compareMerged[p]=(compareMerged[p]||0)+q;});});
+  const todayItems=compareMerged;
+
+  // Filter records by period
+  let days,cutoffStr,endStr=todayStr;
+  if(period==='custom'&&S.salesAvgFrom){
+    cutoffStr=S.salesAvgFrom;
+    endStr=S.salesAvgTo||todayStr;
+    // Calculate days between dates
+    const d1=new Date(cutoffStr),d2=new Date(endStr);
+    days=Math.max(1,Math.round((d2-d1)/(1000*60*60*24))+1);
+  } else {
+    days=period==='3days'?3:period==='week'?7:period==='month'?30:90;
+    const cutoff=new Date(now);cutoff.setDate(cutoff.getDate()-days);
+    cutoffStr=cutoff.toISOString().split('T')[0];
+  }
+
+  // Merge Sales + Day Sales for period
+  const periodSales=[...allSales,...daySalesAll].filter(r=>r.date>=cutoffStr&&r.date<=endStr);
+
+  // Merge Sales + Day Sales by date (same date = one day)
+  const byDate={};
+  periodSales.forEach(r=>{
+    if(!byDate[r.date])byDate[r.date]={};
+    Object.entries(getSalesQty(r)).forEach(([prod,qty])=>{
+      byDate[r.date][prod]=(byDate[r.date][prod]||0)+qty;
+    });
+  });
+
+  // Aggregate by product across all days
+  const totals={};const dayCounts={};
+  Object.entries(byDate).forEach(([date,prods])=>{
+    Object.entries(prods).forEach(([prod,qty])=>{
+      if(qty>0){
+        totals[prod]=(totals[prod]||0)+qty;
+        if(!dayCounts[prod])dayCounts[prod]=new Set();
+        dayCounts[prod].add(date);
+      }
+    });
+  });
+
+  // Build rows: divide by total days in period (not just days with sales)
+  const allProds=new Set([...Object.keys(totals),...Object.keys(todayItems)]);
+  const rows=[...allProds].map(p=>({
+    prod:p,
+    todayQty:todayItems[p]||0,
+    avgQty:totals[p]?totals[p]/days:0,
+    daysCount:dayCounts[p]?dayCounts[p].size:0,
+  })).filter(r=>r.todayQty>0||r.avgQty>0)
+    .sort((a,b)=>b.todayQty-a.todayQty);
+
+  if(!rows.length)return`<div class="card"><div style="color:#78909C;text-align:center;padding:20px">No sales data available</div></div>`;
+
+  const periods=[['3days','3 Days'],['week','Week'],['month','Month'],['3months','3 Months']];
+  const isCustom=S.salesAvgPeriod==='custom';
+
+  let h=`<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+      <div style="font-size:14px;font-weight:700;color:#E65100">📈 Sales Average</div>
+      <div style="display:flex;gap:5px">
+        <button class="btn" style="background:#4527A0;color:#fff;font-size:11px" onclick="addAvgToFormula('a')">+ Formula A</button>
+        <button class="btn" style="background:#00695C;color:#fff;font-size:11px" onclick="addAvgToFormula('b')">+ Formula B</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      ${periods.map(([k,l])=>`<button class="btn" style="font-size:11px;${S.salesAvgPeriod===k||(!S.salesAvgPeriod&&k==='week')?'background:#E65100;color:#fff':'background:#FFF3E0;color:#E65100'}" onclick="S.salesAvgPeriod='${k}';render()">${l}</button>`).join('')}
+      <button class="btn" style="font-size:11px;${isCustom?'background:#E65100;color:#fff':'background:#FFF3E0;color:#E65100'}" onclick="S.salesAvgPeriod='custom';render()">📅 Custom</button>
+    </div>
+    ${isCustom?`<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+      <div style="font-size:10px;color:#78909C">From:</div>
+      <input type="date" class="fi" value="${S.salesAvgFrom||''}" style="font-size:12px;padding:4px 8px" onchange="S.salesAvgFrom=this.value;render()">
+      <div style="font-size:10px;color:#78909C">To:</div>
+      <input type="date" class="fi" value="${S.salesAvgTo||todayStr}" style="font-size:12px;padding:4px 8px" onchange="S.salesAvgTo=this.value;render()">
+    </div>`:''}
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+      <div style="font-size:10px;color:#78909C">Compare date:</div>
+      <input type="date" class="fi" value="${S.salesAvgCompare||todayStr}" style="font-size:12px;padding:4px 8px" onchange="S.salesAvgCompare=this.value;render()">
+      <div style="font-size:10px;color:#78909C">Avg: ${days} days (${periodSales.length} records)</div>
+    </div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="background:#263238;color:#fff">
+        <th style="padding:6px 8px;text-align:left">Product</th>
+        <th style="padding:6px 4px;text-align:center">Details</th>
+        <th style="padding:6px 4px;text-align:center;background:#1565C0">Comb KG</th>
+        <th style="padding:6px 4px;text-align:center;background:#2E7D32">Avg/${days}d</th>
+        <th style="padding:6px 4px;text-align:center;background:#BF360C">Diff</th>
+      </tr></thead><tbody>`;
+
+  // Build details per parent product
+  const parentDetails={};// parent -> {todayKg, avgKg, details:[{prod, todayQty, todayKg, avgKg}]}
+  PARENT_PRODUCTS.forEach(p=>{
+    parentDetails[p]={todayKg:0,avgKg:0,details:[]};
+    // Parent itself
+    const parentRow=rows.find(r=>r.prod===p);
+    if(parentRow){
+      parentDetails[p].todayKg+=parentRow.todayQty;
+      parentDetails[p].avgKg+=parentRow.avgQty;
+      if(parentRow.todayQty>0||parentRow.avgQty>0)
+        parentDetails[p].details.push({prod:p,todayQty:parentRow.todayQty,todayKg:parentRow.todayQty,avgKg:parentRow.avgQty,is500:false});
+    }
+    // Children (500g)
+    rows.filter(r=>C_MAP&&C_MAP[r.prod]===p).forEach(child=>{
+      const kgT=child.todayQty*0.5;
+      const kgA=child.avgQty*0.5;
+      parentDetails[p].todayKg+=kgT;
+      parentDetails[p].avgKg+=kgA;
+      if(child.todayQty>0||child.avgQty>0)
+        parentDetails[p].details.push({prod:child.prod,todayQty:child.todayQty,todayKg:kgT,avgKg:kgA,is500:true});
+    });
+  });
+
+  // Sort by today combined KG desc
+  const mergedRows=PARENT_PRODUCTS
+    .filter(p=>parentDetails[p].todayKg>0||parentDetails[p].avgKg>0)
+    .sort((a,b)=>parentDetails[b].todayKg-parentDetails[a].todayKg);
+
+  mergedRows.forEach((p,i)=>{
+    const d=parentDetails[p];
+    const diff=d.todayKg-d.avgKg;
+    const pct=d.avgKg>0?((diff/d.avgKg)*100).toFixed(0):null;
+    const diffCol=diff>0?'#2E7D32':diff<0?'#C62828':'#78909C';
+    const bg=i%2===0?'#FAFAFA':'#fff';
+    // Build details cell
+    const detailHtml=d.details.map(dt=>
+      `<div style="font-size:9px;color:#78909C">${dt.prod}: ${dt.is500?dt.todayQty.toFixed(0)+'pcs='+dt.todayKg.toFixed(1)+'kg':dt.todayKg.toFixed(1)+'kg'}</div>`
+    ).join('');
+    h+=`<tr style="background:${bg}">
+      <td style="padding:5px 8px;font-weight:700;font-size:11px">${p}</td>
+      <td style="padding:5px 4px;font-size:9px;color:#546E7A">${detailHtml||'—'}</td>
+      <td style="padding:5px 4px;text-align:center;font-weight:700;color:#1565C0;font-size:12px">${d.todayKg>0?d.todayKg.toFixed(2):'—'}</td>
+      <td style="padding:5px 4px;text-align:center;color:#546E7A;font-size:12px">${d.avgKg>0?d.avgKg.toFixed(2):'—'}</td>
+      <td style="padding:5px 4px;text-align:center;font-weight:700;color:${diffCol};font-size:12px">
+        ${diff!==0?(diff>0?'+':'')+diff.toFixed(2)+(pct?' <span style="font-size:9px">('+pct+'%)</span>':''):'—'}
+      </td>
+    </tr>`;
+  });
+
+  h+=`</tbody></table></div></div>`;
+  return h;
+}
 function renderSalesTab(){return UP.step==='upload'?renderUpload():renderSalesResult();}
 function renderUpload(){
   const inf=ti('sales');const recs=[...D.sales].sort((a,b)=>b.date.localeCompare(a.date));
@@ -4851,7 +5084,7 @@ async function odSaveExec(token){
   try{
     const body=getBackupData();
     // Save main backup file
-    const resp=await fetch('https://graph.microsoft.com/v1.0/me/drive/root:/IAT-Inventory/IAT-Inventory-Backup.json:/content',{
+    const resp=await fetch('https://graph.microsoft.com/v1.0/me/drive/root:/IAT-TRADING-INVENTORY/IAT-TRADING-INVENTORY-Backup.json:/content',{
       method:'PUT',
       headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
       body
@@ -4861,8 +5094,8 @@ async function odSaveExec(token){
 
     // Also save dated backup copy
     const today=new Date().toISOString().split('T')[0];
-    const datedName=`IAT-Inventory-Backup-${today}.json`;
-    await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/IAT-Inventory/${datedName}:/content`,{
+    const datedName=`IAT-TRADING-INVENTORY-Backup-${today}.json`;
+    await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/IAT-TRADING-INVENTORY/${datedName}:/content`,{
       method:'PUT',
       headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
       body
@@ -4874,12 +5107,12 @@ async function odSaveExec(token){
 async function odLoadExec(token){
   showToast('📂 Loading from OneDrive...');
   try{
-    const lr=await fetch('https://graph.microsoft.com/v1.0/me/drive/root:/IAT-Inventory:/children',{headers:{'Authorization':'Bearer '+token}});
+    const lr=await fetch('https://graph.microsoft.com/v1.0/me/drive/root:/IAT-TRADING-INVENTORY:/children',{headers:{'Authorization':'Bearer '+token}});
     if(lr.status===401){localStorage.removeItem('od-at');odLogin('load');return;}
     if(!lr.ok){alert('No backup folder found. Save first!');return;}
     const list=await lr.json();
     const files=(list.value||[]).filter(f=>f.name.endsWith('.json')).sort((a,b)=>new Date(b.lastModifiedDateTime)-new Date(a.lastModifiedDateTime));
-    if(!files.length){alert('No backup files in OneDrive/IAT-Inventory/');return;}
+    if(!files.length){alert('No backup files in OneDrive/IAT-TRADING-INVENTORY/');return;}
     const fr=await fetch('https://graph.microsoft.com/v1.0/me/drive/items/'+files[0].id+'/content',{headers:{'Authorization':'Bearer '+token}});
     const data=await fr.json();
     if(!data.version||!data.D){alert('Invalid file');return;}
@@ -4954,7 +5187,7 @@ async function odSave(forceNew=false){
   const data={version:3,exportDate:new Date().toISOString(),PRODUCTS,MD,SMD,SH_DATA,D,FA,FB};
   const json=JSON.stringify(data,null,2);
   const blob=new Blob([json],{type:'application/json'});
-  const fname='IAT-Inventory-Backup.json';
+  const fname='IAT-TRADING-INVENTORY-Backup.json';
   const file=new File([blob],fname,{type:'application/json'});
 
   // ── Mobile: use native share sheet (includes OneDrive app) ──
